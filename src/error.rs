@@ -5,10 +5,10 @@ pub enum Error {
     #[error("not in a Cargo workspace")]
     NotInWorkspace,
 
-    #[error("changesets already initialized")]
+    #[error("changelogs already initialized")]
     AlreadyInitialized,
 
-    #[error("changesets not initialized - run `changesets init` first")]
+    #[error("changelogs not initialized - run `changelogs init` first")]
     NotInitialized,
 
     #[error("invalid bump type: {0}")]
@@ -17,8 +17,8 @@ pub enum Error {
     #[error("package not found: {0}")]
     PackageNotFound(String),
 
-    #[error("failed to parse changeset {0}: {1}")]
-    ChangesetParse(String, String),
+    #[error("failed to parse changelog {0}: {1}")]
+    ChangelogParse(String, String),
 
     #[error("failed to parse config: {0}")]
     ConfigParse(String),

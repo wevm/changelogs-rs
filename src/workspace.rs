@@ -70,12 +70,12 @@ impl Workspace {
         })
     }
 
-    pub fn changeset_dir(&self) -> PathBuf {
-        self.root.join(".changeset")
+    pub fn changelog_dir(&self) -> PathBuf {
+        self.root.join(".changelog")
     }
 
     pub fn is_initialized(&self) -> bool {
-        self.changeset_dir().exists()
+        self.changelog_dir().exists()
     }
 
     pub fn get_package(&self, name: &str) -> Option<&WorkspacePackage> {

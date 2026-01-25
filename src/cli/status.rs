@@ -1,9 +1,9 @@
-use changesets::changeset;
-use changesets::config::Config;
-use changesets::error::Error;
-use changesets::plan;
-use changesets::workspace::Workspace;
-use changesets::BumpType;
+use changelogs::changelog_entry;
+use changelogs::config::Config;
+use changelogs::error::Error;
+use changelogs::plan;
+use changelogs::workspace::Workspace;
+use changelogs::BumpType;
 use anyhow::Result;
 use console::style;
 
@@ -14,26 +14,26 @@ pub fn run(verbose: bool) -> Result<()> {
         return Err(Error::NotInitialized.into());
     }
 
-    let changeset_dir = workspace.changeset_dir();
-    let changesets = changeset::read_all(&changeset_dir)?;
+    let changelog_dir = workspace.changelog_dir();
+    let changelogs = changelog_entry::read_all(&changelog_dir)?;
 
-    if changesets.is_empty() {
-        println!("{} No changesets found", style("ℹ").blue().bold());
+    if changelogs.is_empty() {
+        println!("{} No changelogs found", style("ℹ").blue().bold());
         return Ok(());
     }
 
-    let config = Config::load(&changeset_dir)?;
-    let release_plan = plan::assemble(&workspace, changesets.clone(), &config);
+    let config = Config::load(&changelog_dir)?;
+    let release_plan = plan::assemble(&workspace, changelogs.clone(), &config);
 
     println!(
-        "{} {} changeset(s) found\n",
+        "{} {} changelog(s) found\n",
         style("ℹ").blue().bold(),
-        changesets.len()
+        changelogs.len()
     );
 
     if verbose {
-        println!("{}", style("Changesets:").bold().underlined());
-        for cs in &changesets {
+        println!("{}", style("Changelogs:").bold().underlined());
+        for cs in &changelogs {
             println!("\n  {} {}", style("•").dim(), style(&cs.id).cyan());
             for release in &cs.releases {
                 println!(

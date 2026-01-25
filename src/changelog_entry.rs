@@ -37,7 +37,7 @@ pub fn generate_id() -> String {
 }
 
 #[derive(Debug, Clone)]
-pub struct Changeset {
+pub struct Changelog {
     pub id: String,
     pub summary: String,
     pub releases: Vec<Release>,
@@ -49,11 +49,11 @@ pub struct Release {
     pub bump: BumpType,
 }
 
-pub fn parse(id: &str, content: &str) -> Result<Changeset> {
+pub fn parse(id: &str, content: &str) -> Result<Changelog> {
     let content = content.trim();
 
     if !content.starts_with("---") {
-        return Err(Error::ChangesetParse(
+        return Err(Error::ChangelogParse(
             id.to_string(),
             "missing frontmatter".to_string(),
         ));
@@ -61,7 +61,7 @@ pub fn parse(id: &str, content: &str) -> Result<Changeset> {
 
     let rest = &content[3..];
     let end = rest.find("---").ok_or_else(|| {
-        Error::ChangesetParse(id.to_string(), "missing frontmatter end".to_string())
+        Error::ChangelogParse(id.to_string(), "missing frontmatter end".to_string())
     })?;
 
     let frontmatter = &rest[..end].trim();
@@ -74,30 +74,30 @@ pub fn parse(id: &str, content: &str) -> Result<Changeset> {
         .map(|(package, bump)| Release { package, bump })
         .collect();
 
-    Ok(Changeset {
+    Ok(Changelog {
         id: id.to_string(),
         summary,
         releases,
     })
 }
 
-pub fn serialize(changeset: &Changeset) -> String {
+pub fn serialize(changelog: &Changelog) -> String {
     let mut frontmatter = String::new();
-    for release in &changeset.releases {
+    for release in &changelog.releases {
         frontmatter.push_str(&format!("{}: {}\n", release.package, release.bump));
     }
 
-    format!("---\n{}---\n\n{}\n", frontmatter, changeset.summary)
+    format!("---\n{}---\n\n{}\n", frontmatter, changelog.summary)
 }
 
-pub fn read_all(changeset_dir: &Path) -> Result<Vec<Changeset>> {
-    let mut changesets = Vec::new();
+pub fn read_all(changelog_dir: &Path) -> Result<Vec<Changelog>> {
+    let mut changelogs = Vec::new();
 
-    if !changeset_dir.exists() {
-        return Ok(changesets);
+    if !changelog_dir.exists() {
+        return Ok(changelogs);
     }
 
-    for entry in std::fs::read_dir(changeset_dir)? {
+    for entry in std::fs::read_dir(changelog_dir)? {
         let entry = entry?;
         let path = entry.path();
 
@@ -109,23 +109,23 @@ pub fn read_all(changeset_dir: &Path) -> Result<Vec<Changeset>> {
             }
 
             let content = std::fs::read_to_string(&path)?;
-            let changeset = parse(&filename, &content)?;
-            changesets.push(changeset);
+            let changelog = parse(&filename, &content)?;
+            changelogs.push(changelog);
         }
     }
 
-    Ok(changesets)
+    Ok(changelogs)
 }
 
-pub fn write(changeset_dir: &Path, changeset: &Changeset) -> Result<()> {
-    let path = changeset_dir.join(format!("{}.md", changeset.id));
-    let content = serialize(changeset);
+pub fn write(changelog_dir: &Path, changelog: &Changelog) -> Result<()> {
+    let path = changelog_dir.join(format!("{}.md", changelog.id));
+    let content = serialize(changelog);
     std::fs::write(path, content)?;
     Ok(())
 }
 
-pub fn delete(changeset_dir: &Path, id: &str) -> Result<()> {
-    let path = changeset_dir.join(format!("{}.md", id));
+pub fn delete(changelog_dir: &Path, id: &str) -> Result<()> {
+    let path = changelog_dir.join(format!("{}.md", id));
     if path.exists() {
         std::fs::remove_file(path)?;
     }
@@ -137,7 +137,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_changeset() {
+    fn test_parse_changelog() {
         let content = r#"---
 my-crate: minor
 other-crate: patch
@@ -148,15 +148,15 @@ Added new feature X.
 Fixed bug Y.
 "#;
 
-        let changeset = parse("test-changeset", content).unwrap();
-        assert_eq!(changeset.id, "test-changeset");
-        assert_eq!(changeset.releases.len(), 2);
-        assert!(changeset.summary.contains("Added new feature X"));
+        let changelog = parse("test-changelog", content).unwrap();
+        assert_eq!(changelog.id, "test-changelog");
+        assert_eq!(changelog.releases.len(), 2);
+        assert!(changelog.summary.contains("Added new feature X"));
     }
 
     #[test]
-    fn test_serialize_changeset() {
-        let changeset = Changeset {
+    fn test_serialize_changelog() {
+        let changelog = Changelog {
             id: "test".to_string(),
             summary: "Test summary".to_string(),
             releases: vec![
@@ -167,7 +167,7 @@ Fixed bug Y.
             ],
         };
 
-        let serialized = serialize(&changeset);
+        let serialized = serialize(&changelog);
         assert!(serialized.contains("my-crate: minor"));
         assert!(serialized.contains("Test summary"));
     }

@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 mod cli;
 
 #[derive(Parser)]
-#[command(name = "changesets")]
+#[command(name = "changelogs")]
 #[command(about = "Manage versioning and changelogs for Cargo workspaces")]
 #[command(version)]
 struct Cli {
@@ -14,19 +14,19 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Initialize changesets in this workspace
+    /// Initialize changelogs in this workspace
     Init,
 
-    /// Create a new changeset
+    /// Create a new changelog
     Add {
-        /// Create an empty changeset (no packages)
+        /// Create an empty changelog (no packages)
         #[arg(long)]
         empty: bool,
     },
 
-    /// Show pending changesets and releases
+    /// Show pending changelogs and releases
     Status {
-        /// Show detailed changeset contents
+        /// Show detailed changelog contents
         #[arg(long)]
         verbose: bool,
     },

@@ -1,5 +1,5 @@
-pub mod changelog;
-pub mod changeset;
+pub mod changelog_entry;
+pub mod changelog_writer;
 pub mod config;
 pub mod error;
 pub mod graph;
@@ -8,7 +8,7 @@ pub mod workspace;
 
 use serde::{Deserialize, Serialize};
 
-pub use changeset::{Changeset, Release};
+pub use changelog_entry::{Changelog, Release};
 pub use plan::{PackageRelease, ReleasePlan};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

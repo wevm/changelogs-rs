@@ -1,6 +1,6 @@
-use changesets::config::Config;
-use changesets::error::Error;
-use changesets::workspace::Workspace;
+use changelogs::config::Config;
+use changelogs::error::Error;
+use changelogs::workspace::Workspace;
 use anyhow::Result;
 use console::style;
 
@@ -11,24 +11,24 @@ pub fn run() -> Result<()> {
         return Err(Error::AlreadyInitialized.into());
     }
 
-    let changeset_dir = workspace.changeset_dir();
-    std::fs::create_dir_all(&changeset_dir)?;
+    let changelog_dir = workspace.changelog_dir();
+    std::fs::create_dir_all(&changelog_dir)?;
 
-    std::fs::write(changeset_dir.join("config.toml"), Config::default_toml())?;
+    std::fs::write(changelog_dir.join("config.toml"), Config::default_toml())?;
 
     std::fs::write(
-        changeset_dir.join("README.md"),
-        r#"# Changesets
+        changelog_dir.join("README.md"),
+        r#"# Changelogs
 
-This folder contains changeset files that describe changes to be released.
+This folder contains changelog files that describe changes to be released.
 
-## Adding a changeset
+## Adding a changelog
 
-Run `changesets add` to create a new changeset file.
+Run `changelogs add` to create a new changelog file.
 
 ## File format
 
-Changeset files are markdown with YAML frontmatter:
+Changelog files are markdown with YAML frontmatter:
 
 ```markdown
 ---
@@ -41,20 +41,20 @@ Description of the changes made.
 
 ## Releasing
 
-Run `changesets version` to apply version bumps and generate changelogs.
+Run `changelogs version` to apply version bumps and generate changelogs.
 "#,
     )?;
 
     println!(
-        "{} Initialized changesets in {}",
+        "{} Initialized changelogs in {}",
         style("✓").green().bold(),
-        changeset_dir.display()
+        changelog_dir.display()
     );
 
     println!("\nNext steps:");
-    println!("  1. Run {} to create your first changeset", style("changesets add").cyan());
-    println!("  2. Commit the changeset file with your PR");
-    println!("  3. Run {} to apply versions", style("changesets version").cyan());
+    println!("  1. Run {} to create your first changelog", style("changelogs add").cyan());
+    println!("  2. Commit the changelog file with your PR");
+    println!("  3. Run {} to apply versions", style("changelogs version").cyan());
 
     Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::changeset::Changeset;
+use crate::changelog_entry::Changelog;
 use crate::config::ChangelogFormat;
 use crate::error::Result;
 use crate::plan::PackageRelease;
@@ -7,7 +7,7 @@ use crate::BumpType;
 use chrono::Utc;
 use std::path::Path;
 
-pub fn generate_entry(release: &PackageRelease, changesets: &[Changeset]) -> String {
+pub fn generate_entry(release: &PackageRelease, changelogs: &[Changelog]) -> String {
     let date = Utc::now().format("%Y-%m-%d");
     let mut entry = format!("## {} ({})\n\n", release.new_version, date);
 
@@ -15,17 +15,17 @@ pub fn generate_entry(release: &PackageRelease, changesets: &[Changeset]) -> Str
     let mut minor_changes = Vec::new();
     let mut patch_changes = Vec::new();
 
-    for changeset in changesets {
-        if !release.changeset_ids.contains(&changeset.id) {
+    for changelog in changelogs {
+        if !release.changelog_ids.contains(&changelog.id) {
             continue;
         }
 
-        for rel in &changeset.releases {
+        for rel in &changelog.releases {
             if rel.package != release.name {
                 continue;
             }
 
-            let summary = changeset.summary.trim();
+            let summary = changelog.summary.trim();
             match rel.bump {
                 BumpType::Major => major_changes.push(summary.to_string()),
                 BumpType::Minor => minor_changes.push(summary.to_string()),
@@ -103,14 +103,14 @@ pub fn update_changelog(path: &Path, new_entry: &str) -> Result<()> {
 pub fn write_changelogs(
     workspace: &Workspace,
     releases: &[PackageRelease],
-    changesets: &[Changeset],
+    changelogs: &[Changelog],
     format: ChangelogFormat,
 ) -> Result<()> {
     match format {
         ChangelogFormat::PerCrate => {
             for release in releases {
                 if let Some(package) = workspace.get_package(&release.name) {
-                    let entry = generate_entry(release, changesets);
+                    let entry = generate_entry(release, changelogs);
                     let changelog_path = package.path.join("CHANGELOG.md");
                     update_changelog(&changelog_path, &entry)?;
                 }
@@ -128,7 +128,7 @@ pub fn write_changelogs(
                     release.name, release.new_version
                 ));
 
-                let entry = generate_entry(release, changesets);
+                let entry = generate_entry(release, changelogs);
                 let entry_body = entry
                     .lines()
                     .skip(2)

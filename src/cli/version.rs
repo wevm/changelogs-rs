@@ -1,9 +1,9 @@
-use changesets::changelog;
-use changesets::changeset;
-use changesets::config::Config;
-use changesets::error::Error;
-use changesets::plan;
-use changesets::workspace::Workspace;
+use changelogs::changelog_entry;
+use changelogs::changelog_writer;
+use changelogs::config::Config;
+use changelogs::error::Error;
+use changelogs::plan;
+use changelogs::workspace::Workspace;
 use anyhow::Result;
 use console::style;
 use semver::Version;
@@ -16,16 +16,16 @@ pub fn run() -> Result<()> {
         return Err(Error::NotInitialized.into());
     }
 
-    let changeset_dir = workspace.changeset_dir();
-    let changesets = changeset::read_all(&changeset_dir)?;
+    let changelog_dir = workspace.changelog_dir();
+    let changelogs = changelog_entry::read_all(&changelog_dir)?;
 
-    if changesets.is_empty() {
-        println!("{} No changesets found", style("ℹ").blue().bold());
+    if changelogs.is_empty() {
+        println!("{} No changelogs found", style("ℹ").blue().bold());
         return Ok(());
     }
 
-    let config = Config::load(&changeset_dir)?;
-    let release_plan = plan::assemble(&workspace, changesets.clone(), &config);
+    let config = Config::load(&changelog_dir)?;
+    let release_plan = plan::assemble(&workspace, changelogs.clone(), &config);
 
     if release_plan.releases.is_empty() {
         println!("{} No packages to release", style("ℹ").blue().bold());
@@ -53,10 +53,10 @@ pub fn run() -> Result<()> {
 
     println!("\n{} Updating changelogs...\n", style("→").blue().bold());
 
-    changelog::write_changelogs(
+    changelog_writer::write_changelogs(
         &workspace,
         &release_plan.releases,
-        &changesets,
+        &changelogs,
         config.changelog.format,
     )?;
 
@@ -68,10 +68,10 @@ pub fn run() -> Result<()> {
         );
     }
 
-    println!("\n{} Removing changesets...\n", style("→").blue().bold());
+    println!("\n{} Removing changelogs...\n", style("→").blue().bold());
 
-    for cs in &changesets {
-        changeset::delete(&changeset_dir, &cs.id)?;
+    for cs in &changelogs {
+        changelog_entry::delete(&changelog_dir, &cs.id)?;
         println!(
             "  {} Deleted {}",
             style("✓").green(),

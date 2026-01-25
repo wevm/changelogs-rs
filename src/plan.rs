@@ -1,4 +1,4 @@
-use crate::changeset::Changeset;
+use crate::changelog_entry::Changelog;
 use crate::config::{Config, DependentBump};
 use crate::graph::DependencyGraph;
 use crate::workspace::Workspace;
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct ReleasePlan {
-    pub changesets: Vec<Changeset>,
+    pub changelogs: Vec<Changelog>,
     pub releases: Vec<PackageRelease>,
 }
 
@@ -18,7 +18,7 @@ pub struct PackageRelease {
     pub bump: BumpType,
     pub old_version: Version,
     pub new_version: Version,
-    pub changeset_ids: Vec<String>,
+    pub changelog_ids: Vec<String>,
 }
 
 pub fn bump_version(version: &Version, bump: BumpType) -> Version {
@@ -31,16 +31,16 @@ pub fn bump_version(version: &Version, bump: BumpType) -> Version {
 
 pub fn assemble(
     workspace: &Workspace,
-    changesets: Vec<Changeset>,
+    changelogs: Vec<Changelog>,
     config: &Config,
 ) -> ReleasePlan {
     let graph = DependencyGraph::from_workspace(workspace);
 
     let mut bump_map: HashMap<String, BumpType> = HashMap::new();
-    let mut changeset_map: HashMap<String, Vec<String>> = HashMap::new();
+    let mut changelog_map: HashMap<String, Vec<String>> = HashMap::new();
 
-    for changeset in &changesets {
-        for release in &changeset.releases {
+    for changelog in &changelogs {
+        for release in &changelog.releases {
             if config.ignore.contains(&release.package) {
                 continue;
             }
@@ -52,10 +52,10 @@ pub fn assemble(
             };
             bump_map.insert(release.package.clone(), new_bump);
 
-            changeset_map
+            changelog_map
                 .entry(release.package.clone())
                 .or_default()
-                .push(changeset.id.clone());
+                .push(changelog.id.clone());
         }
     }
 
@@ -135,7 +135,7 @@ pub fn assemble(
                 bump,
                 old_version: package.version.clone(),
                 new_version,
-                changeset_ids: changeset_map.remove(&name).unwrap_or_default(),
+                changelog_ids: changelog_map.remove(&name).unwrap_or_default(),
             })
         })
         .collect();
@@ -143,7 +143,7 @@ pub fn assemble(
     releases.sort_by(|a, b| a.name.cmp(&b.name));
 
     ReleasePlan {
-        changesets,
+        changelogs,
         releases,
     }
 }
@@ -166,8 +166,8 @@ mod tests {
 
     #[test]
     fn test_highest_bump_wins() {
-        let changesets = vec![
-            Changeset {
+        let changelogs = vec![
+            Changelog {
                 id: "a".to_string(),
                 summary: "patch change".to_string(),
                 releases: vec![Release {
@@ -175,7 +175,7 @@ mod tests {
                     bump: BumpType::Patch,
                 }],
             },
-            Changeset {
+            Changelog {
                 id: "b".to_string(),
                 summary: "minor change".to_string(),
                 releases: vec![Release {
@@ -187,7 +187,7 @@ mod tests {
 
         let config = Config::default();
 
-        let bump_map: HashMap<String, BumpType> = changesets
+        let bump_map: HashMap<String, BumpType> = changelogs
             .iter()
             .flat_map(|cs| &cs.releases)
             .fold(HashMap::new(), |mut acc, rel| {

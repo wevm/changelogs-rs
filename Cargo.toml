@@ -1,22 +1,22 @@
 [package]
-name = "changesets"
-version = "0.2.0"
+name = "changelogs"
+version = "0.0.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/wevm/changesets-rs"
+repository = "https://github.com/wevm/changelogs-rs"
 description = "Manage versioning and changelogs for Cargo workspaces"
 keywords = ["changelog", "versioning", "monorepo", "cargo", "workspace"]
 categories = ["development-tools", "command-line-utilities"]
 rust-version = "1.85"
 
 [[bin]]
-name = "changesets"
+name = "changelogs"
 path = "src/main.rs"
 
 [dependencies]
 # CLI
 clap = { version = "4", features = ["derive"] }
-dialoguer = "0.11"
+inquire = { version = "0.9", features = ["editor"] }
 console = "0.15"
 
 # Serialization

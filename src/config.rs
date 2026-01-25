@@ -82,8 +82,8 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn load(changeset_dir: &Path) -> Result<Self> {
-        let config_path = changeset_dir.join("config.toml");
+    pub fn load(changelog_dir: &Path) -> Result<Self> {
+        let config_path = changelog_dir.join("config.toml");
 
         if !config_path.exists() {
             return Ok(Self::default());
@@ -95,8 +95,8 @@ impl Config {
         Ok(config)
     }
 
-    pub fn save(&self, changeset_dir: &Path) -> Result<()> {
-        let config_path = changeset_dir.join("config.toml");
+    pub fn save(&self, changelog_dir: &Path) -> Result<()> {
+        let config_path = changelog_dir.join("config.toml");
         let content = toml::to_string_pretty(self).map_err(|e| Error::ConfigParse(e.to_string()))?;
         std::fs::write(config_path, content)?;
         Ok(())

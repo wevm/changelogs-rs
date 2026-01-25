@@ -1,10 +1,10 @@
-use changesets::changeset;
-use changesets::error::Error;
-use changesets::workspace::Workspace;
-use changesets::{BumpType, Changeset, Release};
+use changelogs::changelog_entry;
+use changelogs::error::Error;
+use changelogs::workspace::Workspace;
+use changelogs::{BumpType, Changelog, Release};
 use anyhow::Result;
 use console::style;
-use dialoguer::{theme::ColorfulTheme, Editor, MultiSelect, Select};
+use inquire::{MultiSelect, Select, Text};
 
 pub fn run(empty: bool) -> Result<()> {
     let workspace = Workspace::discover().map_err(|_| Error::NotInWorkspace)?;
@@ -13,21 +13,21 @@ pub fn run(empty: bool) -> Result<()> {
         return Err(Error::NotInitialized.into());
     }
 
-    let changeset_dir = workspace.changeset_dir();
+    let changelog_dir = workspace.changelog_dir();
 
     if empty {
-        let id = changeset::generate_id();
-        let cs = Changeset {
+        let id = changelog_entry::generate_id();
+        let cs = Changelog {
             id: id.clone(),
             summary: String::new(),
             releases: Vec::new(),
         };
-        changeset::write(&changeset_dir, &cs)?;
+        changelog_entry::write(&changelog_dir, &cs)?;
 
         println!(
-            "{} Created empty changeset: {}",
+            "{} Created empty changelog: {}",
             style("✓").green().bold(),
-            style(format!(".changeset/{}.md", id)).cyan()
+            style(format!(".changelog/{}.md", id)).cyan()
         );
         return Ok(());
     }
@@ -39,39 +39,32 @@ pub fn run(empty: bool) -> Result<()> {
         return Ok(());
     }
 
-    let theme = ColorfulTheme::default();
+    let selected_packages = if package_names.len() == 1 {
+        package_names.clone()
+    } else {
+        let selected = MultiSelect::new("Which packages would you like to include?", package_names.clone())
+            .prompt()?;
 
-    println!("{}", style("Which packages would you like to include?").bold());
+        if selected.is_empty() {
+            return Err(Error::NoPackagesSelected.into());
+        }
+        selected
+    };
 
-    let selected_indices = MultiSelect::with_theme(&theme)
-        .items(&package_names)
-        .interact()?;
-
-    if selected_indices.is_empty() {
-        return Err(Error::NoPackagesSelected.into());
-    }
-
-    let bump_options = ["patch", "minor", "major"];
+    let bump_options = vec!["patch", "minor", "major"];
     let mut releases = Vec::new();
 
-    for idx in selected_indices {
-        let package = &package_names[idx];
+    for package in &selected_packages {
+        let bump_str = Select::new(
+            &format!("Bump type for {}:", package),
+            bump_options.clone(),
+        )
+        .prompt()?;
 
-        println!(
-            "\n{} {}",
-            style("Bump type for").bold(),
-            style(package).cyan()
-        );
-
-        let bump_idx = Select::with_theme(&theme)
-            .items(&bump_options)
-            .default(0)
-            .interact()?;
-
-        let bump = match bump_idx {
-            0 => BumpType::Patch,
-            1 => BumpType::Minor,
-            2 => BumpType::Major,
+        let bump = match bump_str {
+            "patch" => BumpType::Patch,
+            "minor" => BumpType::Minor,
+            "major" => BumpType::Major,
             _ => unreachable!(),
         };
 
@@ -81,34 +74,42 @@ pub fn run(empty: bool) -> Result<()> {
         });
     }
 
-    println!("\n{}", style("Please enter a summary for this changeset:").bold());
-    println!("{}", style("(Opens your default editor)").dim());
+    let inline = Text::new("Summary (leave empty for vim):")
+        .prompt()?;
 
-    let summary = Editor::new()
-        .extension(".md")
-        .edit("")?
-        .unwrap_or_default()
-        .trim()
-        .to_string();
+    let summary = if inline.trim().is_empty() {
+        let temp_file = std::env::temp_dir().join(format!("changelog-{}.md", changelog_entry::generate_id()));
+        std::fs::write(&temp_file, "")?;
+        
+        std::process::Command::new("vim")
+            .arg(&temp_file)
+            .status()?;
+        
+        let content = std::fs::read_to_string(&temp_file)?;
+        std::fs::remove_file(&temp_file).ok();
+        content
+    } else {
+        inline
+    };
 
-    if summary.is_empty() {
-        println!("{} Empty summary, changeset not created", style("!").yellow().bold());
+    if summary.trim().is_empty() {
+        println!("{} Empty summary, changelog not created", style("!").yellow().bold());
         return Ok(());
     }
 
-    let id = changeset::generate_id();
-    let cs = Changeset {
+    let id = changelog_entry::generate_id();
+    let cs = Changelog {
         id: id.clone(),
-        summary,
+        summary: summary.trim().to_string(),
         releases,
     };
 
-    changeset::write(&changeset_dir, &cs)?;
+    changelog_entry::write(&changelog_dir, &cs)?;
 
     println!(
-        "\n{} Created changeset: {}",
+        "\n{} Created changelog: {}",
         style("✓").green().bold(),
-        style(format!(".changeset/{}.md", id)).cyan()
+        style(format!(".changelog/{}.md", id)).cyan()
     );
 
     println!("\nPackages to be released:");

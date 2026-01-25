@@ -1,50 +1,50 @@
-# changesets-rs
+# changelogs
 
 A Rust rewrite of [changesets](https://github.com/changesets/changesets) for Cargo workspaces.
 
 ## Installation
 
 ```bash
-cargo install changesets
+cargo install changelogs
 ```
 
 ## Quick Start
 
 ```bash
-# Initialize changesets in your workspace
-changesets init
+# Initialize changelogs in your workspace
+changelogs init
 
-# Add a changeset for your changes
-changesets add
+# Add a changelog for your changes
+changelogs add
 
 # See what would be released
-changesets status
+changelogs status
 
 # Apply version bumps and generate changelogs
-changesets version
+changelogs version
 ```
 
 ## Workflow
 
 1. **Make changes** to your code
-2. **Run `changesets add`** to describe your changes
-3. **Commit** the changeset file with your PR
+2. **Run `changelogs add`** to describe your changes
+3. **Commit** the changelog file with your PR
 4. **Merge** your PR
-5. **Run `changesets version`** (or let the GitHub Action do it)
+5. **Run `changelogs version`** (or let the GitHub Action do it)
 6. **Merge** the "Version Packages" PR
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `init` | Initialize `.changeset/` directory |
-| `add` | Create a new changeset interactively |
-| `status` | Show pending changesets and releases |
+| `init` | Initialize `.changelog/` directory |
+| `add` | Create a new changelog interactively |
+| `status` | Show pending changelogs and releases |
 | `version` | Apply version bumps and update changelogs |
 
 ## Configuration
 
-`.changeset/config.toml`:
+`.changelog/config.toml`:
 
 ```toml
 # How to bump packages that depend on changed packages
@@ -65,9 +65,9 @@ members = ["sdk-core", "sdk-macros"]
 ignore = []
 ```
 
-## Changeset Format
+## Changelog Format
 
-`.changeset/brave-lions-dance.md`:
+`.changelog/brave-lions-dance.md`:
 
 ```markdown
 ---
@@ -94,16 +94,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: wevm/changesets-rs@v1
+      - uses: wevm/changelogs-rs@v1
         with:
-          version: changesets version
+          version: changelogs version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 The action will:
-1. Check for pending changesets
-2. Run `changesets version` to bump versions
+1. Check for pending changelogs
+2. Run `changelogs version` to bump versions
 3. Create/update a "Version Packages" PR
 4. When merged, versions are updated
 
