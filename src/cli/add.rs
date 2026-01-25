@@ -21,6 +21,7 @@ pub fn run(empty: bool) -> Result<()> {
             id: id.clone(),
             summary: String::new(),
             releases: Vec::new(),
+            commit: None,
         };
         changelog_entry::write(&changelog_dir, &cs)?;
 
@@ -102,6 +103,7 @@ pub fn run(empty: bool) -> Result<()> {
         id: id.clone(),
         summary: summary.trim().to_string(),
         releases,
+        commit: None,
     };
 
     changelog_entry::write(&changelog_dir, &cs)?;

@@ -41,6 +41,7 @@ changelogs version
 | `add` | Create a new changelog interactively |
 | `status` | Show pending changelogs and releases |
 | `version` | Apply version bumps and update changelogs |
+| `publish` | Publish unpublished packages to crates.io |
 
 ## Configuration
 
@@ -94,18 +95,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install changelogs
       - uses: wevm/changelogs-rs@v1
         with:
           version: changelogs version
+          publish: changelogs publish
+          crate-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-The action will:
-1. Check for pending changelogs
-2. Run `changelogs version` to bump versions
-3. Create/update a "Version Packages" PR
-4. When merged, versions are updated
+**The action automatically handles both versioning and publishing:**
+
+1. **If changelogs exist** → Creates/updates a "Version Packages" PR
+2. **If no changelogs** (PR was just merged) → Publishes unpublished packages to crates.io
+
+### Action Inputs
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `version` | Command to run for versioning | `changelogs version` |
+| `publish` | Command to run for publishing | - |
+| `crate-token` | Crates.io API token for publishing | - |
+| `commit` | Commit message for version bump | `Version Packages` |
+| `title` | Pull request title | `Version Packages` |
+| `branch` | Branch name for the version PR | `changelog-release/main` |
+
+### Action Outputs
+
+| Output | Description |
+|--------|-------------|
+| `hasChangelogs` | Whether there are pending changelogs |
+| `pullRequestNumber` | The PR number if created/updated |
+| `published` | Whether packages were published |
+| `publishedPackages` | JSON array of published packages |
 
 ## License
 

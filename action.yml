@@ -1,5 +1,5 @@
-name: 'Changelogs Version'
-description: 'Create a PR with version bumps and changelogs when changelogs are present'
+name: 'Changelogs'
+description: 'Create a PR with version bumps and changelogs, and publish packages when merged'
 author: 'wevm'
 
 branding:
@@ -11,6 +11,12 @@ inputs:
     description: 'Command to run for versioning'
     required: false
     default: 'changelogs version'
+  publish:
+    description: 'Command to run for publishing (runs when no changelogs are pending)'
+    required: false
+  crate-token:
+    description: 'Crates.io API token for publishing'
+    required: false
   commit:
     description: 'Commit message for version bump'
     required: false
@@ -35,6 +41,12 @@ outputs:
   pullRequestNumber:
     description: 'The pull request number if created or updated'
     value: ${{ steps.pr.outputs.pull-request-number }}
+  published:
+    description: 'Whether packages were published'
+    value: ${{ steps.publish.outputs.published }}
+  publishedPackages:
+    description: 'JSON array of published packages'
+    value: ${{ steps.publish.outputs.publishedPackages }}
 
 runs:
   using: 'composite'
@@ -51,6 +63,7 @@ runs:
           echo "No pending changelogs"
         fi
 
+    # Version mode: Create PR when changelogs exist
     - name: Setup Git user
       if: steps.check.outputs.hasChangelogs == 'true'
       shell: bash
@@ -72,7 +85,7 @@ runs:
         echo "body<<$EOF" >> $GITHUB_OUTPUT
         echo "This PR was opened by the Changelogs release workflow." >> $GITHUB_OUTPUT
         echo "" >> $GITHUB_OUTPUT
-        echo "When you're ready to release, merge this PR and the versions will be updated." >> $GITHUB_OUTPUT
+        echo "When you're ready to release, merge this PR and the packages will be published." >> $GITHUB_OUTPUT
         echo "" >> $GITHUB_OUTPUT
         echo "---" >> $GITHUB_OUTPUT
         echo "" >> $GITHUB_OUTPUT
@@ -102,3 +115,31 @@ runs:
         base: ${{ github.ref_name }}
         commit-message: ${{ inputs.commit }}
         delete-branch: true
+
+    # Publish mode: Publish when no changelogs (PR was just merged)
+    - name: Publish packages
+      if: steps.check.outputs.hasChangelogs == 'false' && inputs.publish != ''
+      id: publish
+      shell: bash
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ inputs.crate-token }}
+      run: |
+        echo "Running publish command: ${{ inputs.publish }}"
+        output=$(${{ inputs.publish }} 2>&1) || true
+        echo "$output"
+        
+        # Parse published packages from output
+        packages=$(echo "$output" | grep -E "^\s+\S+\s+v[0-9]" | grep "✓" | awk '{print $1}' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+        
+        if [ "$packages" != "[]" ] && [ -n "$packages" ]; then
+          echo "published=true" >> $GITHUB_OUTPUT
+          echo "publishedPackages=$packages" >> $GITHUB_OUTPUT
+        else
+          echo "published=false" >> $GITHUB_OUTPUT
+          echo "publishedPackages=[]" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Push git tags
+      if: steps.check.outputs.hasChangelogs == 'false' && inputs.publish != '' && steps.publish.outputs.published == 'true'
+      shell: bash
+      run: git push --follow-tags

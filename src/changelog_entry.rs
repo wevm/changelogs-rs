@@ -1,7 +1,7 @@
 use crate::error::{Error, Result};
 use crate::BumpType;
 use rand::Rng;
-use std::collections::HashMap;
+
 use std::path::Path;
 
 const ADJECTIVES: &[&str] = &[
@@ -41,6 +41,7 @@ pub struct Changelog {
     pub id: String,
     pub summary: String,
     pub releases: Vec<Release>,
+    pub commit: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -67,17 +68,33 @@ pub fn parse(id: &str, content: &str) -> Result<Changelog> {
     let frontmatter = &rest[..end].trim();
     let summary = rest[end + 3..].trim().to_string();
 
-    let releases_map: HashMap<String, BumpType> = serde_yaml::from_str(frontmatter)?;
+    let frontmatter_value: serde_yaml::Value = serde_yaml::from_str(frontmatter)?;
+    
+    let commit = frontmatter_value
+        .get("commit")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
 
-    let releases = releases_map
-        .into_iter()
-        .map(|(package, bump)| Release { package, bump })
-        .collect();
+    let mut releases = Vec::new();
+    if let serde_yaml::Value::Mapping(map) = frontmatter_value {
+        for (key, value) in map {
+            if let (serde_yaml::Value::String(package), serde_yaml::Value::String(bump_str)) = (key, value) {
+                if package == "commit" {
+                    continue;
+                }
+                let bump: BumpType = bump_str.parse().map_err(|_| {
+                    Error::ChangelogParse(id.to_string(), format!("invalid bump type: {}", bump_str))
+                })?;
+                releases.push(Release { package, bump });
+            }
+        }
+    }
 
     Ok(Changelog {
         id: id.to_string(),
         summary,
         releases,
+        commit,
     })
 }
 
@@ -88,6 +105,75 @@ pub fn serialize(changelog: &Changelog) -> String {
     }
 
     format!("---\n{}---\n\n{}\n", frontmatter, changelog.summary)
+}
+
+pub struct CommitInfo {
+    pub pr_number: Option<u32>,
+    pub commit_sha: String,
+    pub authors: Vec<String>,
+}
+
+pub fn get_commit_info(_changelog_dir: &Path, id: &str) -> Option<CommitInfo> {
+    let file_path = format!(".changelog/{}.md", id);
+    
+    let output = std::process::Command::new("git")
+        .args(["log", "--follow", "--diff-filter=A", "--format=%H %s", "-1", "--", &file_path])
+        .output()
+        .ok()?;
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let line = stdout.trim();
+    
+    if line.is_empty() {
+        return None;
+    }
+    
+    let parts: Vec<&str> = line.splitn(2, ' ').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    
+    let commit_sha = parts[0].to_string();
+    let commit_message = parts[1];
+    
+    let pr_number = extract_pr_number(commit_message);
+    
+    let authors = get_commit_authors(&file_path);
+    
+    Some(CommitInfo {
+        pr_number,
+        commit_sha,
+        authors,
+    })
+}
+
+fn get_commit_authors(file_path: &str) -> Vec<String> {
+    let output = std::process::Command::new("git")
+        .args(["log", "--follow", "--format=%aN", "--", file_path])
+        .output()
+        .ok();
+    
+    let Some(output) = output else {
+        return Vec::new();
+    };
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut authors: Vec<String> = stdout
+        .lines()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    
+    authors.sort();
+    authors.dedup();
+    authors
+}
+
+fn extract_pr_number(message: &str) -> Option<u32> {
+    let re = regex::Regex::new(r"\(#(\d+)\)").ok()?;
+    re.captures(message)
+        .and_then(|cap| cap.get(1))
+        .and_then(|m| m.as_str().parse().ok())
 }
 
 pub fn read_all(changelog_dir: &Path) -> Result<Vec<Changelog>> {
@@ -165,6 +251,7 @@ Fixed bug Y.
                     bump: BumpType::Minor,
                 },
             ],
+            commit: None,
         };
 
         let serialized = serialize(&changelog);

@@ -174,6 +174,7 @@ mod tests {
                     package: "foo".to_string(),
                     bump: BumpType::Patch,
                 }],
+                commit: None,
             },
             Changelog {
                 id: "b".to_string(),
@@ -182,6 +183,7 @@ mod tests {
                     package: "foo".to_string(),
                     bump: BumpType::Minor,
                 }],
+                commit: None,
             },
         ];
 

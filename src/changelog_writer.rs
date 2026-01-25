@@ -1,4 +1,4 @@
-use crate::changelog_entry::Changelog;
+use crate::changelog_entry::{self, Changelog};
 use crate::config::ChangelogFormat;
 use crate::error::Result;
 use crate::plan::PackageRelease;
@@ -6,10 +6,37 @@ use crate::workspace::Workspace;
 use crate::BumpType;
 use chrono::Utc;
 use std::path::Path;
+use std::process::Command;
 
-pub fn generate_entry(release: &PackageRelease, changelogs: &[Changelog]) -> String {
+fn get_github_url() -> Option<String> {
+    let output = Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .output()
+        .ok()?;
+    
+    let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    
+    if url.starts_with("git@github.com:") {
+        let repo = url.strip_prefix("git@github.com:")?.strip_suffix(".git").unwrap_or(&url);
+        Some(format!("https://github.com/{}", repo))
+    } else if url.starts_with("https://github.com/") {
+        Some(url.strip_suffix(".git").unwrap_or(&url).to_string())
+    } else {
+        None
+    }
+}
+
+struct ChangeWithMeta {
+    summary: String,
+    link: Option<(String, String)>, // (url, display_text)
+    authors: Vec<String>,
+}
+
+pub fn generate_entry(release: &PackageRelease, changelogs: &[Changelog], changelog_dir: &Path) -> String {
     let date = Utc::now().format("%Y-%m-%d");
     let mut entry = format!("## {} ({})\n\n", release.new_version, date);
+
+    let github_url = get_github_url();
 
     let mut major_changes = Vec::new();
     let mut minor_changes = Vec::new();
@@ -25,11 +52,28 @@ pub fn generate_entry(release: &PackageRelease, changelogs: &[Changelog]) -> Str
                 continue;
             }
 
-            let summary = changelog.summary.trim();
+            let summary = changelog.summary.trim().to_string();
+            
+            let (link_info, authors) = github_url.as_ref()
+                .and_then(|base| {
+                    let info = changelog_entry::get_commit_info(changelog_dir, &changelog.id)?;
+                    
+                    let link_info = if let Some(pr) = info.pr_number {
+                        Some((format!("{}/pull/{}", base, pr), format!("#{}", pr)))
+                    } else {
+                        let short_sha = &info.commit_sha[..7.min(info.commit_sha.len())];
+                        Some((format!("{}/commit/{}", base, short_sha), short_sha.to_string()))
+                    };
+                    
+                    Some((link_info, info.authors))
+                })
+                .unwrap_or((None, Vec::new()));
+
+            let change = ChangeWithMeta { summary, link: link_info, authors };
             match rel.bump {
-                BumpType::Major => major_changes.push(summary.to_string()),
-                BumpType::Minor => minor_changes.push(summary.to_string()),
-                BumpType::Patch => patch_changes.push(summary.to_string()),
+                BumpType::Major => major_changes.push(change),
+                BumpType::Minor => minor_changes.push(change),
+                BumpType::Patch => patch_changes.push(change),
             }
         }
     }
@@ -37,13 +81,7 @@ pub fn generate_entry(release: &PackageRelease, changelogs: &[Changelog]) -> Str
     if !major_changes.is_empty() {
         entry.push_str("### Major Changes\n\n");
         for change in major_changes {
-            for line in change.lines() {
-                if line.starts_with('-') || line.starts_with('*') {
-                    entry.push_str(&format!("{}\n", line));
-                } else if !line.is_empty() {
-                    entry.push_str(&format!("- {}\n", line));
-                }
-            }
+            write_change_lines(&mut entry, &change);
         }
         entry.push('\n');
     }
@@ -51,13 +89,7 @@ pub fn generate_entry(release: &PackageRelease, changelogs: &[Changelog]) -> Str
     if !minor_changes.is_empty() {
         entry.push_str("### Minor Changes\n\n");
         for change in minor_changes {
-            for line in change.lines() {
-                if line.starts_with('-') || line.starts_with('*') {
-                    entry.push_str(&format!("{}\n", line));
-                } else if !line.is_empty() {
-                    entry.push_str(&format!("- {}\n", line));
-                }
-            }
+            write_change_lines(&mut entry, &change);
         }
         entry.push('\n');
     }
@@ -65,18 +97,47 @@ pub fn generate_entry(release: &PackageRelease, changelogs: &[Changelog]) -> Str
     if !patch_changes.is_empty() {
         entry.push_str("### Patch Changes\n\n");
         for change in patch_changes {
-            for line in change.lines() {
-                if line.starts_with('-') || line.starts_with('*') {
-                    entry.push_str(&format!("{}\n", line));
-                } else if !line.is_empty() {
-                    entry.push_str(&format!("- {}\n", line));
-                }
-            }
+            write_change_lines(&mut entry, &change);
         }
         entry.push('\n');
     }
 
     entry
+}
+
+fn write_change_lines(entry: &mut String, change: &ChangeWithMeta) {
+    let mut suffix_parts = Vec::new();
+    
+    if !change.authors.is_empty() {
+        let authors_str = change.authors
+            .iter()
+            .map(|a| format!("@{}", a.replace(' ', "")))
+            .collect::<Vec<_>>()
+            .join(", ");
+        suffix_parts.push(format!("by {}", authors_str));
+    }
+    
+    if let Some((ref url, ref display)) = change.link {
+        suffix_parts.push(format!("[{}]({})", display, url));
+    }
+    
+    let suffix = if suffix_parts.is_empty() {
+        String::new()
+    } else {
+        format!(" ({})", suffix_parts.join(", "))
+    };
+    
+    let lines: Vec<&str> = change.summary.lines().collect();
+    for (i, line) in lines.iter().enumerate() {
+        let is_last = i == lines.len() - 1;
+        let line_suffix = if is_last { &suffix } else { "" };
+        
+        if line.starts_with('-') || line.starts_with('*') {
+            entry.push_str(&format!("{}{}\n", line, line_suffix));
+        } else if !line.is_empty() {
+            entry.push_str(&format!("- {}{}\n", line, line_suffix));
+        }
+    }
 }
 
 pub fn update_changelog(path: &Path, new_entry: &str) -> Result<()> {
@@ -106,11 +167,13 @@ pub fn write_changelogs(
     changelogs: &[Changelog],
     format: ChangelogFormat,
 ) -> Result<()> {
+    let changelog_dir = &workspace.changelog_dir;
+    
     match format {
         ChangelogFormat::PerCrate => {
             for release in releases {
                 if let Some(package) = workspace.get_package(&release.name) {
-                    let entry = generate_entry(release, changelogs);
+                    let entry = generate_entry(release, changelogs, changelog_dir);
                     let changelog_path = package.path.join("CHANGELOG.md");
                     update_changelog(&changelog_path, &entry)?;
                 }
@@ -118,17 +181,14 @@ pub fn write_changelogs(
         }
         ChangelogFormat::Root => {
             let mut combined_entry = String::new();
-            let date = Utc::now().format("%Y-%m-%d");
-
-            combined_entry.push_str(&format!("## {} Releases\n\n", date));
 
             for release in releases {
                 combined_entry.push_str(&format!(
-                    "### {} v{}\n\n",
+                    "## `{}@{}`\n\n",
                     release.name, release.new_version
                 ));
 
-                let entry = generate_entry(release, changelogs);
+                let entry = generate_entry(release, changelogs, changelog_dir);
                 let entry_body = entry
                     .lines()
                     .skip(2)
