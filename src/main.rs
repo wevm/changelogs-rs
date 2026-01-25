@@ -33,6 +33,17 @@ enum Commands {
 
     /// Apply version bumps and update changelogs
     Version,
+
+    /// Publish unpublished packages to crates.io
+    Publish {
+        /// Perform a dry run without actually publishing
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Registry to publish to
+        #[arg(long)]
+        tag: Option<String>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -43,6 +54,7 @@ fn main() -> Result<()> {
         Commands::Add { empty } => cli::add::run(empty)?,
         Commands::Status { verbose } => cli::status::run(verbose)?,
         Commands::Version => cli::version::run()?,
+        Commands::Publish { dry_run, tag } => cli::publish::run(dry_run, tag)?,
     }
 
     Ok(())

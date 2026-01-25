@@ -3,11 +3,13 @@ use cargo_metadata::{Metadata, MetadataCommand};
 use semver::Version;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::process::Command;
 use toml_edit::DocumentMut;
 
 #[derive(Debug, Clone)]
 pub struct Workspace {
     pub root: PathBuf,
+    pub changelog_dir: PathBuf,
     pub packages: Vec<WorkspacePackage>,
     #[allow(dead_code)]
     metadata: Metadata,
@@ -63,15 +65,45 @@ impl Workspace {
             });
         }
 
+        let changelog_dir = workspace_root.join(".changelog");
         Ok(Workspace {
             root: workspace_root,
+            changelog_dir,
             packages,
             metadata,
         })
     }
 
+    pub fn load() -> Result<Self> {
+        Self::discover()
+    }
+
     pub fn changelog_dir(&self) -> PathBuf {
         self.root.join(".changelog")
+    }
+
+    pub fn get_publishable_packages(&self) -> Result<Vec<&WorkspacePackage>> {
+        let mut publishable = Vec::new();
+
+        for pkg in &self.packages {
+            let output = Command::new("cargo")
+                .args(["search", "--limit", "1", &pkg.name])
+                .output()?;
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            
+            let is_published_with_same_version = stdout
+                .lines()
+                .next()
+                .map(|line| line.contains(&format!("\"{}\"", pkg.version)))
+                .unwrap_or(false);
+
+            if !is_published_with_same_version {
+                publishable.push(pkg);
+            }
+        }
+
+        Ok(publishable)
     }
 
     pub fn is_initialized(&self) -> bool {

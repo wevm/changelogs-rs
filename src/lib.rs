@@ -9,7 +9,9 @@ pub mod workspace;
 use serde::{Deserialize, Serialize};
 
 pub use changelog_entry::{Changelog, Release};
+pub use config::Config;
 pub use plan::{PackageRelease, ReleasePlan};
+pub use workspace::{Workspace, WorkspacePackage as Package};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
