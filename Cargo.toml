@@ -1,0 +1,46 @@
+[package]
+name = "changesets"
+version = "0.2.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/wevm/changesets-rs"
+description = "Manage versioning and changelogs for Cargo workspaces"
+keywords = ["changelog", "versioning", "monorepo", "cargo", "workspace"]
+categories = ["development-tools", "command-line-utilities"]
+rust-version = "1.85"
+
+[[bin]]
+name = "changesets"
+path = "src/main.rs"
+
+[dependencies]
+# CLI
+clap = { version = "4", features = ["derive"] }
+dialoguer = "0.11"
+console = "0.15"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+toml_edit = "0.22"
+serde_yaml = "0.9"
+
+# Versioning
+semver = { version = "1", features = ["serde"] }
+
+# Cargo/workspace
+cargo_metadata = "0.19"
+
+# Graph
+petgraph = "0.7"
+
+# Errors
+thiserror = "2"
+anyhow = "1"
+
+# Utils
+rand = "0.9"
+chrono = "0.4"
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,122 @@
+name: 'Changesets Version'
+description: 'Create a PR with version bumps and changelogs when changesets are present'
+author: 'wevm'
+
+branding:
+  icon: 'package'
+  color: 'orange'
+
+inputs:
+  version:
+    description: 'Command to run for versioning'
+    required: false
+    default: 'changesets version'
+  commit:
+    description: 'Commit message for version bump'
+    required: false
+    default: 'Version Packages'
+  title:
+    description: 'Pull request title'
+    required: false
+    default: 'Version Packages'
+  branch:
+    description: 'Branch name for the version PR'
+    required: false
+    default: 'changeset-release/main'
+  github-token:
+    description: 'GitHub token for creating PRs'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  hasChangesets:
+    description: 'Whether there are pending changesets'
+    value: ${{ steps.check.outputs.hasChangesets }}
+  pullRequestNumber:
+    description: 'The pull request number if created or updated'
+    value: ${{ steps.pr.outputs.pull-request-number }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check for changesets
+      id: check
+      shell: bash
+      run: |
+        if [ -d ".changeset" ] && [ "$(find .changeset -name '*.md' ! -name 'README.md' 2>/dev/null | head -1)" ]; then
+          echo "hasChangesets=true" >> $GITHUB_OUTPUT
+          echo "Found pending changesets"
+        else
+          echo "hasChangesets=false" >> $GITHUB_OUTPUT
+          echo "No pending changesets"
+        fi
+
+    - name: Setup Git user
+      if: steps.check.outputs.hasChangesets == 'true'
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+    - name: Create release branch
+      if: steps.check.outputs.hasChangesets == 'true'
+      shell: bash
+      run: |
+        git checkout -B ${{ inputs.branch }}
+
+    - name: Run version command
+      if: steps.check.outputs.hasChangesets == 'true'
+      shell: bash
+      run: ${{ inputs.version }}
+
+    - name: Commit changes
+      if: steps.check.outputs.hasChangesets == 'true'
+      shell: bash
+      run: |
+        git add -A
+        git commit -m "${{ inputs.commit }}" || echo "No changes to commit"
+
+    - name: Push branch
+      if: steps.check.outputs.hasChangesets == 'true'
+      shell: bash
+      run: |
+        git push origin ${{ inputs.branch }} --force
+
+    - name: Generate PR body
+      if: steps.check.outputs.hasChangesets == 'true'
+      id: body
+      shell: bash
+      run: |
+        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        echo "body<<$EOF" >> $GITHUB_OUTPUT
+        echo "This PR was opened by the Changesets release workflow." >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_OUTPUT
+        echo "When you're ready to release, merge this PR and the versions will be updated." >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_OUTPUT
+        echo "---" >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_OUTPUT
+        echo "### Releases" >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_OUTPUT
+        # Extract version changes from git diff
+        git diff HEAD~1 --name-only | grep "Cargo.toml" | while read file; do
+          if [ -f "$file" ]; then
+            pkg=$(grep -m1 '^name = ' "$file" 2>/dev/null | sed 's/name = "\(.*\)"/\1/' || true)
+            ver=$(grep -m1 '^version = ' "$file" 2>/dev/null | sed 's/version = "\(.*\)"/\1/' || true)
+            if [ -n "$pkg" ] && [ -n "$ver" ]; then
+              echo "- \`$pkg@$ver\`" >> $GITHUB_OUTPUT
+            fi
+          fi
+        done
+        echo "$EOF" >> $GITHUB_OUTPUT
+
+    - name: Create or update PR
+      if: steps.check.outputs.hasChangesets == 'true'
+      id: pr
+      uses: peter-evans/create-pull-request@v7
+      with:
+        token: ${{ inputs.github-token }}
+        branch: ${{ inputs.branch }}
+        title: ${{ inputs.title }}
+        body: ${{ steps.body.outputs.body }}
+        base: ${{ github.ref_name }}
+        delete-branch: true
