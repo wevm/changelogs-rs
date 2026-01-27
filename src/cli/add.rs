@@ -8,7 +8,7 @@ use inquire::{MultiSelect, Select, Text};
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-pub fn run(empty: bool, ai: Option<String>) -> Result<()> {
+pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>) -> Result<()> {
     let workspace = Workspace::discover().map_err(|_| Error::NotInWorkspace)?;
 
     if !workspace.is_initialized() {
@@ -36,7 +36,7 @@ pub fn run(empty: bool, ai: Option<String>) -> Result<()> {
     }
 
     if let Some(ai_command) = ai {
-        return run_ai_generation(&workspace, &changelog_dir, &ai_command);
+        return run_ai_generation(&workspace, &changelog_dir, &ai_command, instructions.as_deref());
     }
 
     let package_names: Vec<String> = workspace.package_names().iter().map(|s| s.to_string()).collect();
@@ -133,10 +133,32 @@ pub fn run(empty: bool, ai: Option<String>) -> Result<()> {
     Ok(())
 }
 
+const DEFAULT_INSTRUCTIONS: &str = r#"Generate a changelog entry for this git diff. 
+
+Available packages: {packages}
+
+Respond with ONLY a markdown file in this exact format (no explanation, no code fences):
+
+---
+package-name: patch
+---
+
+Brief description of changes.
+
+Rules:
+- Use "patch" for bug fixes, "minor" for features, "major" for breaking changes
+- Keep the summary concise (1-3 sentences)
+- Only include packages that were actually modified
+- Use past tense (e.g. "Added", "Fixed", "Removed")
+
+Git diff:
+{diff}"#;
+
 fn run_ai_generation(
     workspace: &Workspace,
     changelog_dir: &std::path::Path,
     ai_command: &str,
+    instructions: Option<&str>,
 ) -> Result<()> {
 
     println!("{} Generating changelog with AI...", style("→").cyan().bold());
@@ -175,28 +197,10 @@ fn run_ai_generation(
 
     let package_names = workspace.package_names().join(", ");
 
-    let prompt = format!(
-        r#"Generate a changelog entry for this git diff. 
-
-Available packages: {package_names}
-
-Respond with ONLY a markdown file in this exact format (no explanation, no code fences):
-
----
-package-name: patch
----
-
-Brief description of changes.
-
-Rules:
-- Use "patch" for bug fixes, "minor" for features, "major" for breaking changes
-- Keep the summary concise (1-3 sentences)
-- Only include packages that were actually modified
-- Use past tense (e.g. "Added", "Fixed", "Removed")
-
-Git diff:
-{diff_to_use}"#
-    );
+    let template = instructions.unwrap_or(DEFAULT_INSTRUCTIONS);
+    let prompt = template
+        .replace("{packages}", &package_names)
+        .replace("{diff}", &diff_to_use);
 
     let parts: Vec<&str> = ai_command.split_whitespace().collect();
     let (cmd, args) = parts.split_first().ok_or_else(|| anyhow::anyhow!("Invalid AI command"))?;

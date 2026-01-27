@@ -14,6 +14,9 @@ inputs:
     description: 'Commit message for the changelog'
     required: false
     default: 'chore: add changelog'
+  instructions:
+    description: 'Custom instructions for AI generation (use {packages} and {diff} placeholders)'
+    required: false
 
 outputs:
   found:
@@ -44,7 +47,11 @@ runs:
       if: steps.check.outputs.found == 'false'
       shell: bash
       run: |
-        changelogs add --ai "${{ inputs.ai }}"
+        if [ -n "${{ inputs.instructions }}" ]; then
+          changelogs add --ai "${{ inputs.ai }}" --instructions "${{ inputs.instructions }}"
+        else
+          changelogs add --ai "${{ inputs.ai }}"
+        fi
         echo "generated=true" >> $GITHUB_OUTPUT
 
     - name: Commit changelog

@@ -24,8 +24,12 @@ enum Commands {
         empty: bool,
 
         /// Use AI to generate the changelog from git diff
-        #[arg(long)]
+        #[arg(short = 'a', long)]
         ai: Option<String>,
+
+        /// Custom instructions for AI generation
+        #[arg(short = 'i', long)]
+        instructions: Option<String>,
     },
 
     /// Show pending changelogs and releases
@@ -55,7 +59,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Init => cli::init::run()?,
-        Commands::Add { empty, ai } => cli::add::run(empty, ai)?,
+        Commands::Add { empty, ai, instructions } => cli::add::run(empty, ai, instructions)?,
         Commands::Status { verbose } => cli::status::run(verbose)?,
         Commands::Version => cli::version::run()?,
         Commands::Publish { dry_run, tag } => cli::publish::run(dry_run, tag)?,
