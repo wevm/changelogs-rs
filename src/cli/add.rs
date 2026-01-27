@@ -5,8 +5,10 @@ use changelogs::{BumpType, Changelog, Release};
 use anyhow::Result;
 use console::style;
 use inquire::{MultiSelect, Select, Text};
+use std::io::Write;
+use std::process::{Command, Stdio};
 
-pub fn run(empty: bool) -> Result<()> {
+pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>, base_ref: Option<String>) -> Result<()> {
     let workspace = Workspace::discover().map_err(|_| Error::NotInWorkspace)?;
 
     if !workspace.is_initialized() {
@@ -31,6 +33,10 @@ pub fn run(empty: bool) -> Result<()> {
             style(format!(".changelog/{}.md", id)).cyan()
         );
         return Ok(());
+    }
+
+    if let Some(ai_command) = ai {
+        return run_ai_generation(&workspace, &changelog_dir, &ai_command, instructions.as_deref(), base_ref.as_deref());
     }
 
     let package_names: Vec<String> = workspace.package_names().iter().map(|s| s.to_string()).collect();
@@ -123,6 +129,150 @@ pub fn run(empty: bool) -> Result<()> {
             style(release.bump.to_string()).yellow()
         );
     }
+
+    Ok(())
+}
+
+const DEFAULT_INSTRUCTIONS: &str = r#"Generate a changelog entry for this git diff. 
+
+Available packages: {packages}
+
+Respond with ONLY a markdown file in this exact format (no explanation, no code fences):
+
+---
+package-name: patch
+---
+
+Brief description of changes.
+
+Rules:
+- Use "patch" for bug fixes, "minor" for features, "major" for breaking changes
+- Keep the summary concise (1-3 sentences)
+- Only include packages that were actually modified
+- Use past tense (e.g. "Added", "Fixed", "Removed")
+
+Git diff:
+{diff}"#;
+
+fn run_ai_generation(
+    workspace: &Workspace,
+    changelog_dir: &std::path::Path,
+    ai_command: &str,
+    instructions: Option<&str>,
+    base_ref: Option<&str>,
+) -> Result<()> {
+
+    println!("{} Generating changelog with AI...", style("→").cyan().bold());
+
+    let diff_to_use = if let Some(base) = base_ref {
+        // Diff against base ref (for CI/PR workflows)
+        let diff = Command::new("git")
+            .args(["diff", &format!("{}...HEAD", base)])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+            .unwrap_or_default();
+        
+        if diff.is_empty() {
+            return Err(anyhow::anyhow!("No changes detected between {} and HEAD.", base));
+        }
+        diff
+    } else {
+        // Try staged changes first
+        let staged = Command::new("git")
+            .args(["diff", "--cached"])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+            .unwrap_or_default();
+
+        if !staged.is_empty() {
+            staged
+        } else {
+            // Try unstaged changes
+            let unstaged = Command::new("git")
+                .args(["diff"])
+                .output()
+                .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+                .unwrap_or_default();
+            
+            if unstaged.is_empty() {
+                return Err(anyhow::anyhow!("No changes detected. Stage your changes with `git add` first, or use --ref to diff against a branch."));
+            }
+            unstaged
+        }
+    };
+
+    let package_names = workspace.package_names().join(", ");
+
+    let template = instructions.unwrap_or(DEFAULT_INSTRUCTIONS);
+    let prompt = template
+        .replace("{packages}", &package_names)
+        .replace("{diff}", &diff_to_use);
+
+    let parts: Vec<&str> = ai_command.split_whitespace().collect();
+    let (cmd, args) = parts.split_first().ok_or_else(|| anyhow::anyhow!("Invalid AI command"))?;
+
+    let mut child = Command::new(cmd)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(prompt.as_bytes())?;
+    }
+
+    let output = child.wait_with_output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return Err(anyhow::anyhow!(
+            "AI command failed (exit code {:?}):\nstderr: {}\nstdout: {}",
+            output.status.code(),
+            stderr,
+            stdout
+        ));
+    }
+
+    let response = String::from_utf8_lossy(&output.stdout).to_string();
+    
+    let cleaned = response
+        .trim()
+        .trim_start_matches("```markdown")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+
+    let changelog = changelogs::changelog_entry::parse("ai-generated", cleaned)?;
+    
+    let id = changelog_entry::generate_id();
+    let cs = Changelog {
+        id: id.clone(),
+        summary: changelog.summary,
+        releases: changelog.releases,
+        commit: None,
+    };
+
+    changelog_entry::write(changelog_dir, &cs)?;
+
+    println!(
+        "\n{} Created changelog: {}",
+        style("✓").green().bold(),
+        style(format!(".changelog/{}.md", id)).cyan()
+    );
+
+    println!("\nPackages to be released:");
+    for release in &cs.releases {
+        println!(
+            "  {} {} ({})",
+            style("•").dim(),
+            release.package,
+            style(release.bump.to_string()).yellow()
+        );
+    }
+
+    println!("\nSummary:\n{}", cs.summary);
 
     Ok(())
 }
