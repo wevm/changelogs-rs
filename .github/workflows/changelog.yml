@@ -1,11 +1,11 @@
-name: Changeset
+name: Changelog
 
 on:
   pull_request:
     types: [opened, synchronize]
 
 jobs:
-  check-changeset:
+  check-changelog:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -23,7 +23,7 @@ jobs:
       - name: Install Claude CLI
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Generate changeset if missing
+      - name: Generate changelog if missing
         uses: ./gen
         with:
           ai: 'claude -p'

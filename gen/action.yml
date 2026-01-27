@@ -1,5 +1,5 @@
-name: 'Generate Changeset'
-description: 'Check for missing changeset and generate'
+name: 'Generate Changelog'
+description: 'Check for missing changelog and generate'
 author: 'wevm'
 
 inputs:
@@ -11,35 +11,35 @@ inputs:
     required: false
     default: ${{ github.base_ref }}
   message:
-    description: 'Commit message for the changeset'
+    description: 'Commit message for the changelog'
     required: false
-    default: 'chore: add changeset'
+    default: 'chore: add changelog'
 
 outputs:
   found:
-    description: 'Whether a changeset was already present'
+    description: 'Whether a changelog was already present'
     value: ${{ steps.check.outputs.found }}
   generated:
-    description: 'Whether a changeset was generated'
+    description: 'Whether a changelog was generated'
     value: ${{ steps.generate.outputs.generated }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Check for changeset
+    - name: Check for changelog
       id: check
       shell: bash
       run: |
-        CHANGESETS=$(git diff --name-only origin/${{ inputs.ref }}...HEAD -- '.changelog/*.md' | grep -v config.toml || true)
-        if [ -n "$CHANGESETS" ]; then
+        CHANGELOGS=$(git diff --name-only origin/${{ inputs.ref }}...HEAD -- '.changelog/*.md' | grep -v config.toml || true)
+        if [ -n "$CHANGELOGS" ]; then
           echo "found=true" >> $GITHUB_OUTPUT
-          echo "Changeset found: $CHANGESETS"
+          echo "Changelog found: $CHANGELOGS"
         else
           echo "found=false" >> $GITHUB_OUTPUT
-          echo "No changeset found"
+          echo "No changelog found"
         fi
 
-    - name: Generate changeset
+    - name: Generate changelog
       id: generate
       if: steps.check.outputs.found == 'false'
       shell: bash
@@ -47,7 +47,7 @@ runs:
         changelogs add --ai "${{ inputs.ai }}"
         echo "generated=true" >> $GITHUB_OUTPUT
 
-    - name: Commit changeset
+    - name: Commit changelog
       if: steps.check.outputs.found == 'false'
       shell: bash
       run: |
