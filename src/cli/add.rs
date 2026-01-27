@@ -140,12 +140,13 @@ Available packages: {packages}
 Respond with ONLY a markdown file in this exact format (no explanation, no code fences):
 
 ---
-package-name: patch
+<package-name>: patch
 ---
 
 Brief description of changes.
 
 Rules:
+- Replace <package-name> with the actual package name from the list above
 - Use "patch" for bug fixes, "minor" for features, "major" for breaking changes
 - Keep the summary concise (1-3 sentences)
 - Only include packages that were actually modified
