@@ -89,18 +89,15 @@ runs:
         echo "" >> $GITHUB_OUTPUT
         echo "---" >> $GITHUB_OUTPUT
         echo "" >> $GITHUB_OUTPUT
-        echo "### Releases" >> $GITHUB_OUTPUT
-        echo "" >> $GITHUB_OUTPUT
-        # Extract version from changed Cargo.toml files
-        git diff --name-only | grep "Cargo.toml" | while read file; do
-          if [ -f "$file" ]; then
-            pkg=$(grep -m1 '^name = ' "$file" 2>/dev/null | sed 's/name = "\(.*\)"/\1/' || true)
-            ver=$(grep -m1 '^version = ' "$file" 2>/dev/null | sed 's/version = "\(.*\)"/\1/' || true)
-            if [ -n "$pkg" ] && [ -n "$ver" ]; then
-              echo "- \`$pkg@$ver\`" >> $GITHUB_OUTPUT
-            fi
+        
+        # Find and include changelog content
+        for changelog in $(git diff --name-only | grep "CHANGELOG.md"); do
+          if [ -f "$changelog" ]; then
+            # Get just the new content (skip the # Changelog header)
+            tail -n +3 "$changelog" | head -100
           fi
-        done
+        done >> $GITHUB_OUTPUT
+        
         echo "$EOF" >> $GITHUB_OUTPUT
 
     - name: Create or update PR
