@@ -27,5 +27,6 @@ jobs:
         uses: ./gen
         with:
           ai: 'claude -p'
+          conventional-commit: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

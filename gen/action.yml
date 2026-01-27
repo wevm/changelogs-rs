@@ -11,9 +11,12 @@ inputs:
     required: false
     default: ${{ github.base_ref }}
   message:
-    description: 'Commit message for the changelog'
+    description: 'Commit message for the changelog (overrides conventional-commit)'
     required: false
-    default: 'chore: add changelog'
+  conventional-commit:
+    description: 'Use conventional commit format (chore: prefix)'
+    required: false
+    default: 'false'
   instructions:
     description: 'Custom instructions for AI generation (use {packages} and {diff} placeholders)'
     required: false
@@ -61,5 +64,12 @@ runs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git add .changelog/
-        git commit -m "${{ inputs.message }}"
+        if [ -n "${{ inputs.message }}" ]; then
+          commit_msg="${{ inputs.message }}"
+        elif [ "${{ inputs.conventional-commit }}" = "true" ]; then
+          commit_msg="chore: add changelog"
+        else
+          commit_msg="Add changelog"
+        fi
+        git commit -m "$commit_msg"
         git push
