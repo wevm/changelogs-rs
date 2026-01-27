@@ -3,14 +3,17 @@ description: 'Check for missing changeset and generate'
 author: 'wevm'
 
 inputs:
-  ai-command:
+  ai:
     description: 'AI command to generate changelog (must accept stdin)'
-    required: false
-    default: 'claude -p'
-  base-ref:
+    required: true
+  ref:
     description: 'Base ref to compare against'
     required: false
     default: ${{ github.base_ref }}
+  message:
+    description: 'Commit message for the changeset'
+    required: false
+    default: 'chore: add changeset'
 
 outputs:
   found:
@@ -27,7 +30,7 @@ runs:
       id: check
       shell: bash
       run: |
-        CHANGESETS=$(git diff --name-only origin/${{ inputs.base-ref }}...HEAD -- '.changelog/*.md' | grep -v config.toml || true)
+        CHANGESETS=$(git diff --name-only origin/${{ inputs.ref }}...HEAD -- '.changelog/*.md' | grep -v config.toml || true)
         if [ -n "$CHANGESETS" ]; then
           echo "found=true" >> $GITHUB_OUTPUT
           echo "Changeset found: $CHANGESETS"
@@ -41,7 +44,7 @@ runs:
       if: steps.check.outputs.found == 'false'
       shell: bash
       run: |
-        changelogs add --ai "${{ inputs.ai-command }}"
+        changelogs add --ai "${{ inputs.ai }}"
         echo "generated=true" >> $GITHUB_OUTPUT
 
     - name: Commit changeset
@@ -51,5 +54,5 @@ runs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git add .changelog/
-        git commit -m "Add changeset"
+        git commit -m "${{ inputs.message }}"
         git push

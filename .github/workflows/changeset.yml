@@ -25,5 +25,7 @@ jobs:
 
       - name: Generate changeset if missing
         uses: ./.github/actions/ai-changeset
+        with:
+          ai: 'claude -p'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
