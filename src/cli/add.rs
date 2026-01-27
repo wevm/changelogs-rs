@@ -192,6 +192,7 @@ Rules:
 - Use "patch" for bug fixes, "minor" for features, "major" for breaking changes
 - Keep the summary concise (1-3 sentences)
 - Only include packages that were actually modified
+- Use past tense (e.g. "Added", "Fixed", "Removed")
 
 Git diff:
 {diff_to_use}"#
