@@ -1,4 +1,4 @@
-name: 'AI Changeset'
+name: 'Generate Changeset'
 description: 'Check for missing changeset and generate'
 author: 'wevm'
 
