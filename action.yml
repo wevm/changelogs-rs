@@ -111,6 +111,13 @@ runs:
         delete-branch: true
 
     # Publish mode: Publish when no changelogs (PR was just merged)
+    - name: Setup Git user for tags
+      if: steps.check.outputs.hasChangelogs == 'false' && inputs.publish != ''
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
     - name: Publish packages
       if: steps.check.outputs.hasChangelogs == 'false' && inputs.publish != ''
       id: publish
