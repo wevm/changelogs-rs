@@ -31,7 +31,8 @@ pub fn run(dry_run: bool, tag: Option<String>) -> Result<()> {
         cmd.arg("publish")
             .arg("--package")
             .arg(&pkg.name)
-            .arg("--no-verify");
+            .arg("--no-verify")
+            .arg("--allow-dirty");
         
         if let Some(ref t) = tag {
             cmd.env("CARGO_REGISTRY_DEFAULT", t);
