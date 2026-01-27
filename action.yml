@@ -73,8 +73,15 @@ runs:
 
     - name: Run version command
       if: steps.check.outputs.hasChangelogs == 'true'
+      id: version
       shell: bash
-      run: ${{ inputs.version }}
+      run: |
+        output=$(${{ inputs.version }} 2>&1)
+        echo "$output"
+        
+        # Extract versions from output (e.g., "changelogs 0.0.1 → 0.1.0")
+        versions=$(echo "$output" | grep -oE '[a-zA-Z0-9_-]+ [0-9]+\.[0-9]+\.[0-9]+ → [0-9]+\.[0-9]+\.[0-9]+' | sed 's/.* → /v/' | tr '\n' ', ' | sed 's/, $//')
+        echo "versions=$versions" >> $GITHUB_OUTPUT
 
     - name: Generate PR body
       if: steps.check.outputs.hasChangelogs == 'true'
@@ -104,7 +111,7 @@ runs:
       with:
         token: ${{ inputs.github-token }}
         branch: ${{ inputs.branch }}
-        title: ${{ inputs.title }}
+        title: "${{ inputs.title }} (${{ steps.version.outputs.versions }})"
         body-path: ${{ steps.body.outputs.body-file }}
         base: ${{ github.ref_name }}
         commit-message: ${{ inputs.commit }}
