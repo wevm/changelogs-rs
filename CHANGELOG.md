@@ -1,5 +1,11 @@
 # Changelog
 
+## `changelogs@0.2.0`
+
+### Minor Changes
+
+- Added automatic installation of changelogs binary in GitHub Actions with caching support, and simplified action inputs by removing customizable version/publish commands in favor of hardcoded changelogs commands. (by @jxom, [#10](https://github.com/wevm/changelogs-rs/pull/10))
+
 ## `changelogs@0.1.1`
 
 ### Patch Changes
