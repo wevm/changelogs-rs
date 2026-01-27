@@ -185,5 +185,44 @@ runs:
         # Get tags that were just pushed
         for tag in $(git tag --points-at HEAD); do
           echo "Creating release for $tag"
-          gh release create "$tag" --generate-notes || true
+          
+          # Extract changelog section for this tag from CHANGELOG.md
+          changelog_notes=""
+          if [ -f "CHANGELOG.md" ]; then
+            changelog_notes=$(awk -v tag="$tag" '
+              BEGIN { found=0; printing=0 }
+              /^## `.*`/ {
+                if (printing) exit
+                gsub(/`/, "", $0)
+                gsub(/^## /, "", $0)
+                if ($0 == tag) { found=1; printing=1; next }
+              }
+              printing { print }
+            ' CHANGELOG.md)
+          fi
+          
+          # Generate GitHub's notes to get "New Contributors" and "Full Changelog"
+          github_notes=$(gh api repos/${{ github.repository }}/releases/generate-notes \
+            -f tag_name="$tag" \
+            --jq '.body' 2>/dev/null || echo "")
+          
+          # Remove "What's Changed" section, keep "New Contributors" and "Full Changelog"
+          github_extras=$(echo "$github_notes" | awk '
+            BEGIN { skip=0 }
+            /^## What'\''s Changed/ { skip=1; next }
+            /^## New Contributors/ { skip=0 }
+            /^\*\*Full Changelog\*\*/ { skip=0 }
+            !skip { print }
+          ')
+          
+          # Combine: changelog content + GitHub extras (New Contributors, Full Changelog)
+          if [ -n "$changelog_notes" ]; then
+            notes="$changelog_notes"
+            if [ -n "$github_extras" ]; then
+              notes="$notes"$'\n'"$github_extras"
+            fi
+            echo "$notes" | gh release create "$tag" --notes-file - || true
+          else
+            gh release create "$tag" --generate-notes || true
+          fi
         done
