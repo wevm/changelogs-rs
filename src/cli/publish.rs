@@ -44,11 +44,14 @@ pub fn run(dry_run: bool, tag: Option<String>) -> Result<()> {
             published.push(pkg);
         } else {
             let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
             if stderr.contains("already uploaded") || stderr.contains("already exists") {
                 println!("(already published)");
             } else {
                 println!("✗");
-                eprintln!("    {}", stderr.lines().next().unwrap_or("unknown error"));
+                for line in stdout.lines().chain(stderr.lines()) {
+                    eprintln!("    {}", line);
+                }
                 failed.push(pkg);
             }
         }
