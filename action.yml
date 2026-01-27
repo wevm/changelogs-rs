@@ -185,5 +185,26 @@ runs:
         # Get tags that were just pushed
         for tag in $(git tag --points-at HEAD); do
           echo "Creating release for $tag"
-          gh release create "$tag" --generate-notes || true
+          
+          # Extract changelog section for this tag from CHANGELOG.md
+          # Format: ## `package@version` followed by content until next ## or EOF
+          if [ -f "CHANGELOG.md" ]; then
+            # Escape special chars in tag for regex, extract section content (skip the header line)
+            notes=$(awk -v tag="$tag" '
+              BEGIN { found=0; printing=0 }
+              /^## `.*`/ {
+                if (printing) exit
+                gsub(/`/, "", $0)
+                gsub(/^## /, "", $0)
+                if ($0 == tag) { found=1; printing=1; next }
+              }
+              printing { print }
+            ' CHANGELOG.md)
+          fi
+          
+          if [ -n "$notes" ]; then
+            echo "$notes" | gh release create "$tag" --notes-file - || true
+          else
+            gh release create "$tag" --generate-notes || true
+          fi
         done
