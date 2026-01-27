@@ -22,6 +22,10 @@ enum Commands {
         /// Create an empty changelog (no packages)
         #[arg(long)]
         empty: bool,
+
+        /// Use AI to generate the changelog from git diff
+        #[arg(long)]
+        ai: Option<String>,
     },
 
     /// Show pending changelogs and releases
@@ -51,7 +55,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Init => cli::init::run()?,
-        Commands::Add { empty } => cli::add::run(empty)?,
+        Commands::Add { empty, ai } => cli::add::run(empty, ai)?,
         Commands::Status { verbose } => cli::status::run(verbose)?,
         Commands::Version => cli::version::run()?,
         Commands::Publish { dry_run, tag } => cli::publish::run(dry_run, tag)?,

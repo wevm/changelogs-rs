@@ -1,0 +1,56 @@
+name: Changeset
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  check-changeset:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Check for changeset
+        id: check
+        run: |
+          # Check if any .changelog/*.md files were added in this PR
+          CHANGESETS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- '.changelog/*.md' | grep -v config.toml || true)
+          if [ -n "$CHANGESETS" ]; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "Changeset found: $CHANGESETS"
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+            echo "No changeset found"
+          fi
+
+      - name: Install changelogs CLI
+        if: steps.check.outputs.found == 'false'
+        run: cargo install --path .
+
+      - name: Install Claude CLI
+        if: steps.check.outputs.found == 'false'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Generate changeset
+        if: steps.check.outputs.found == 'false'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > /tmp/diff.txt
+          changelogs add --ai "claude"
+
+      - name: Commit changeset
+        if: steps.check.outputs.found == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .changelog/
+          git commit -m "Add changeset"
+          git push

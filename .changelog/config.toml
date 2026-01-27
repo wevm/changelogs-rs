@@ -17,3 +17,6 @@ format = "root"
 
 # Packages to ignore
 ignore = []
+
+[ai]
+command = "amp -x"

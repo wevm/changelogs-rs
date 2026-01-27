@@ -18,6 +18,14 @@ pub struct Config {
 
     #[serde(default)]
     pub ignore: Vec<String>,
+
+    #[serde(default)]
+    pub ai: AiConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AiConfig {
+    pub command: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -77,6 +85,7 @@ impl Default for Config {
             fixed: Vec::new(),
             linked: Vec::new(),
             ignore: Vec::new(),
+            ai: AiConfig::default(),
         }
     }
 }
@@ -122,6 +131,10 @@ format = "per-crate"
 
 # Packages to ignore
 ignore = []
+
+# AI-assisted changelog generation
+# [ai]
+# command = "amp ask"  # or "gh copilot suggest -t shell"
 "#
     }
 }
