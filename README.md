@@ -52,8 +52,8 @@ flowchart LR
 
 | Step | Link |
 |------|------|
-| Developer opens PR with a changelog file | [#1](https://github.com/wevm/changelogs-rs/pull/TODO_PR1) |
-| PR merged → CI creates "Version Packages" PR | [#2](https://github.com/wevm/changelogs-rs/pull/TODO_PR2) |
+| Developer opens PR with a changelog file | [PR #1](https://github.com/wevm/changelogs-rs/pull/TODO_PR1) |
+| PR merged → CI creates "Version Packages" PR | [PR #2](https://github.com/wevm/changelogs-rs/pull/TODO_PR2) |
 | Version PR merged → Release published | [v0.0.2](https://github.com/wevm/changelogs-rs/releases/tag/TODO_TAG) |
 
 ## Commands
