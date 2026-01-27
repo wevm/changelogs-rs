@@ -26,12 +26,35 @@ changelogs version
 
 ## Workflow
 
+```mermaid
+flowchart LR
+    subgraph "1. Development"
+        A[Make changes] --> B[changelogs add]
+        B --> C[Commit & PR]
+    end
+    
+    subgraph "2. Automated Release"
+        C --> D[Merge PR]
+        D --> E[CI creates<br/>Version PR]
+        E --> F[Merge Version PR]
+        F --> G[Release published]
+    end
+```
+
 1. **Make changes** to your code
 2. **Run `changelogs add`** to describe your changes
 3. **Commit** the changelog file with your PR
 4. **Merge** your PR
-5. **Run `changelogs version`** (or let the GitHub Action do it)
-6. **Merge** the "Version Packages" PR
+5. CI automatically creates a "Version Packages" PR
+6. **Merge** the Version PR → Release published
+
+## Demo
+
+| Step | Link |
+|------|------|
+| Developer opens PR with a changelog file | [#1](https://github.com/wevm/changelogs-rs/pull/TODO_PR1) |
+| PR merged → CI creates "Version Packages" PR | [#2](https://github.com/wevm/changelogs-rs/pull/TODO_PR2) |
+| Version PR merged → Release published | [v0.0.2](https://github.com/wevm/changelogs-rs/releases/tag/TODO_TAG) |
 
 ## Commands
 
