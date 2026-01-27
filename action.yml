@@ -20,11 +20,11 @@ inputs:
   commit:
     description: 'Commit message for version bump'
     required: false
-    default: 'Version Packages'
+    default: 'Release Packages'
   title:
     description: 'Pull request title'
     required: false
-    default: 'Version Packages'
+    default: 'Release Packages'
   branch:
     description: 'Branch name for the version PR'
     required: false

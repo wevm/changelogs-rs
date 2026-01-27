@@ -27,5 +27,7 @@ jobs:
           version: changelogs version
           publish: changelogs publish
           crate-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          title: 'chore: release packages'
+          commit: 'chore: release packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
