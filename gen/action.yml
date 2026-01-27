@@ -47,11 +47,11 @@ runs:
       if: steps.check.outputs.found == 'false'
       shell: bash
       run: |
+        ARGS="--ai \"${{ inputs.ai }}\" --ref origin/${{ inputs.ref }}"
         if [ -n "${{ inputs.instructions }}" ]; then
-          changelogs add --ai "${{ inputs.ai }}" --instructions "${{ inputs.instructions }}"
-        else
-          changelogs add --ai "${{ inputs.ai }}"
+          ARGS="$ARGS --instructions \"${{ inputs.instructions }}\""
         fi
+        eval "changelogs add $ARGS"
         echo "generated=true" >> $GITHUB_OUTPUT
 
     - name: Commit changelog

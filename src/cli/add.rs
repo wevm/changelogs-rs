@@ -8,7 +8,7 @@ use inquire::{MultiSelect, Select, Text};
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>) -> Result<()> {
+pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>, base_ref: Option<String>) -> Result<()> {
     let workspace = Workspace::discover().map_err(|_| Error::NotInWorkspace)?;
 
     if !workspace.is_initialized() {
@@ -36,7 +36,7 @@ pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>) -> Res
     }
 
     if let Some(ai_command) = ai {
-        return run_ai_generation(&workspace, &changelog_dir, &ai_command, instructions.as_deref());
+        return run_ai_generation(&workspace, &changelog_dir, &ai_command, instructions.as_deref(), base_ref.as_deref());
     }
 
     let package_names: Vec<String> = workspace.package_names().iter().map(|s| s.to_string()).collect();
@@ -159,40 +159,46 @@ fn run_ai_generation(
     changelog_dir: &std::path::Path,
     ai_command: &str,
     instructions: Option<&str>,
+    base_ref: Option<&str>,
 ) -> Result<()> {
 
     println!("{} Generating changelog with AI...", style("→").cyan().bold());
 
-    let git_diff = Command::new("git")
-        .args(["diff", "--cached", "--stat"])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
-        .unwrap_or_default();
-
-    let git_diff_full = Command::new("git")
-        .args(["diff", "--cached"])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
-        .unwrap_or_default();
-
-    let diff_to_use = if git_diff.is_empty() {
-        let unstaged = Command::new("git")
-            .args(["diff", "--stat"])
+    let diff_to_use = if let Some(base) = base_ref {
+        // Diff against base ref (for CI/PR workflows)
+        let diff = Command::new("git")
+            .args(["diff", &format!("{}...HEAD", base)])
             .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
             .unwrap_or_default();
         
-        if unstaged.is_empty() {
-            return Err(anyhow::anyhow!("No changes detected. Stage your changes with `git add` first."));
+        if diff.is_empty() {
+            return Err(anyhow::anyhow!("No changes detected between {} and HEAD.", base));
         }
-        
-        Command::new("git")
-            .args(["diff"])
+        diff
+    } else {
+        // Try staged changes first
+        let staged = Command::new("git")
+            .args(["diff", "--cached"])
             .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
-            .unwrap_or_default()
-    } else {
-        git_diff_full
+            .unwrap_or_default();
+
+        if !staged.is_empty() {
+            staged
+        } else {
+            // Try unstaged changes
+            let unstaged = Command::new("git")
+                .args(["diff"])
+                .output()
+                .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+                .unwrap_or_default();
+            
+            if unstaged.is_empty() {
+                return Err(anyhow::anyhow!("No changes detected. Stage your changes with `git add` first, or use --ref to diff against a branch."));
+            }
+            unstaged
+        }
     };
 
     let package_names = workspace.package_names().join(", ");

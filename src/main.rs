@@ -30,6 +30,10 @@ enum Commands {
         /// Custom instructions for AI generation
         #[arg(short = 'i', long)]
         instructions: Option<String>,
+
+        /// Base ref to diff against (e.g. origin/main)
+        #[arg(short = 'r', long, name = "ref")]
+        base_ref: Option<String>,
     },
 
     /// Show pending changelogs and releases
@@ -59,7 +63,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Init => cli::init::run()?,
-        Commands::Add { empty, ai, instructions } => cli::add::run(empty, ai, instructions)?,
+        Commands::Add { empty, ai, instructions, base_ref } => cli::add::run(empty, ai, instructions, base_ref)?,
         Commands::Status { verbose } => cli::status::run(verbose)?,
         Commands::Version => cli::version::run()?,
         Commands::Publish { dry_run, tag } => cli::publish::run(dry_run, tag)?,
