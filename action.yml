@@ -7,13 +7,6 @@ branding:
   color: 'orange'
 
 inputs:
-  version:
-    description: 'Command to run for versioning'
-    required: false
-    default: 'changelogs version'
-  publish:
-    description: 'Command to run for publishing (runs when no changelogs are pending)'
-    required: false
   crate-token:
     description: 'Crates.io API token for publishing'
     required: false
@@ -50,6 +43,21 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache changelogs binary
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/changelogs
+        key: changelogs-${{ runner.os }}-${{ runner.arch }}
+
+    - name: Install changelogs
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: cargo install changelogs
+
     - name: Check for changelogs
       id: check
       shell: bash
@@ -75,7 +83,7 @@ runs:
       id: version
       shell: bash
       run: |
-        output=$(${{ inputs.version }} 2>&1)
+        output=$(changelogs version 2>&1)
         echo "$output"
         
         # Extract versions from output (e.g., "changelogs 0.0.1 → 0.1.0" -> "changelogs@0.1.0")
@@ -141,23 +149,22 @@ runs:
         commit-message: ${{ inputs.commit || steps.version.outputs.commit-msg }}
         delete-branch: true
 
-    # Publish mode: Publish when no changelogs (PR was just merged)
+    # Publish mode: Publish when no changelogs (PR was just merged) and crate-token provided
     - name: Setup Git user for tags
-      if: steps.check.outputs.hasChangelogs == 'false' && inputs.publish != ''
+      if: steps.check.outputs.hasChangelogs == 'false' && inputs.crate-token != ''
       shell: bash
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
     - name: Publish packages
-      if: steps.check.outputs.hasChangelogs == 'false' && inputs.publish != ''
+      if: steps.check.outputs.hasChangelogs == 'false' && inputs.crate-token != ''
       id: publish
       shell: bash
       env:
         CARGO_REGISTRY_TOKEN: ${{ inputs.crate-token }}
       run: |
-        echo "Running publish command: ${{ inputs.publish }}"
-        output=$(${{ inputs.publish }} 2>&1) || true
+        output=$(changelogs publish 2>&1) || true
         echo "$output"
         
         # Parse published packages from output
@@ -172,12 +179,12 @@ runs:
         fi
 
     - name: Push git tags
-      if: steps.check.outputs.hasChangelogs == 'false' && inputs.publish != '' && steps.publish.outputs.published == 'true'
+      if: steps.check.outputs.hasChangelogs == 'false' && inputs.crate-token != '' && steps.publish.outputs.published == 'true'
       shell: bash
       run: git push --follow-tags
 
     - name: Create GitHub releases
-      if: steps.check.outputs.hasChangelogs == 'false' && inputs.publish != '' && steps.publish.outputs.published == 'true'
+      if: steps.check.outputs.hasChangelogs == 'false' && inputs.crate-token != '' && steps.publish.outputs.published == 'true'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
