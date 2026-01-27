@@ -20,11 +20,7 @@ inputs:
   commit:
     description: 'Commit message for version bump'
     required: false
-    default: 'Release Packages'
-  title:
-    description: 'Pull request title'
-    required: false
-    default: 'Release Packages'
+    default: 'chore: release'
   branch:
     description: 'Branch name for the version PR'
     required: false
@@ -80,7 +76,23 @@ runs:
         echo "$output"
         
         # Extract versions from output (e.g., "changelogs 0.0.1 → 0.1.0" -> "changelogs@v0.1.0")
-        versions=$(echo "$output" | grep -oE '[a-zA-Z0-9_-]+ [0-9]+\.[0-9]+\.[0-9]+ → [0-9]+\.[0-9]+\.[0-9]+' | sed 's/ .* → /@v/' | tr '\n' ',' | sed 's/,*$//' | sed 's/^,//')
+        all_versions=$(echo "$output" | grep -oE '[a-zA-Z0-9_-]+ [0-9]+\.[0-9]+\.[0-9]+ → [0-9]+\.[0-9]+\.[0-9]+' | sed 's/ .* → /@v/')
+        count=$(echo "$all_versions" | grep -c . || echo 0)
+        
+        if [ "$count" -eq 0 ]; then
+          versions=""
+        elif [ "$count" -eq 1 ]; then
+          versions="\`$(echo "$all_versions" | head -1)\`"
+        elif [ "$count" -eq 2 ]; then
+          first=$(echo "$all_versions" | head -1)
+          second=$(echo "$all_versions" | tail -1)
+          versions="\`$first\` and \`$second\`"
+        else
+          first=$(echo "$all_versions" | head -1)
+          second=$(echo "$all_versions" | sed -n '2p')
+          remaining=$((count - 2))
+          versions="\`$first\`, \`$second\` and $remaining more"
+        fi
         echo "versions=$versions" >> $GITHUB_OUTPUT
 
     - name: Generate PR body
@@ -111,7 +123,7 @@ runs:
       with:
         token: ${{ inputs.github-token }}
         branch: ${{ inputs.branch }}
-        title: "${{ inputs.title }} (${{ steps.version.outputs.versions }})"
+        title: "Release ${{ steps.version.outputs.versions }}"
         body-path: ${{ steps.body.outputs.body-file }}
         base: ${{ github.ref_name }}
         commit-message: ${{ inputs.commit }}
