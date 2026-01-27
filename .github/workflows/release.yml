@@ -24,8 +24,6 @@ jobs:
       - name: Changelogs
         uses: ./
         with:
-          version: changelogs version
-          publish: changelogs publish
           crate-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
           conventional-commit: true
         env:
