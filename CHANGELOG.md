@@ -1,5 +1,11 @@
 # Changelog
 
+## `changelogs@0.1.1`
+
+### Patch Changes
+
+- Fixed GitHub releases to use changelog content from CHANGELOG.md instead of auto-generated notes. (by @jxom, [#7](https://github.com/wevm/changelogs-rs/pull/7))
+
 ## `changelogs@0.1.0`
 
 ### Minor Changes
