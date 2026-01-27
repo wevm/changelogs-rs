@@ -50,6 +50,21 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache changelogs binary
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/changelogs
+        key: changelogs-${{ runner.os }}-${{ runner.arch }}
+
+    - name: Install changelogs
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: cargo install changelogs
+
     - name: Check for changelogs
       id: check
       shell: bash
