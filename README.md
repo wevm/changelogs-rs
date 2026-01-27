@@ -34,9 +34,9 @@ flowchart LR
         C --> D[Merge PR]
     end
     subgraph Release
-        D --> E[RC PR created with proposed changelog]
+        D --> E[/RC PR created with changelog/]
         E --> F[Merge RC PR]
-        F --> G[📦 Packages released]
+        F --> G[/📦 Packages released/]
     end
 ```
 
