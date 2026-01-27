@@ -24,7 +24,7 @@ jobs:
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Generate changeset if missing
-        uses: ./.github/actions/ai-changeset
+        uses: ./gen
         with:
           ai: 'claude -p'
         env:
