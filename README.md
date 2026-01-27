@@ -24,14 +24,36 @@ changelogs status
 changelogs version
 ```
 
-## Workflow
+## Workflows
 
-1. **Make changes** to your code
-2. **Run `changelogs add`** to describe your changes
-3. **Commit** the changelog file with your PR
-4. **Merge** your PR
-5. **Run `changelogs version`** (or let the GitHub Action do it)
-6. **Merge** the "Version Packages" PR
+```mermaid
+flowchart LR
+    subgraph Development
+        A[Make Changes] --> B[Open PR]
+        B --> C{AI generates<br/>changelog}
+        C --> D[Merge PR]
+    end
+    subgraph Release
+        D --> E[RC PR created with proposed changelog]
+        E --> F[Merge RC PR]
+        F --> G[📦 Packages released]
+    end
+```
+
+### Development
+
+1. Implement feature & **make changes** to your code
+2. **Open a PR** to propose your changes
+   1. Changelogs are auto-generated via AI (if `wevm/changelogs-rs/gen` action set up)
+   2. Changelogs can be manually generated with `changelogs add`
+3. **Merge the PR**
+   1. Changelogs are kept in the `.changelog/` directory
+
+### Release (Candidate)
+
+1. **Pushes to main** trigger the Release Candidate workflow
+2. **Workflow** creates or updates a Release Candidate PR with RC changelog
+3. **Merge the PR** to release and publish the changelog
 
 ## Commands
 
@@ -39,6 +61,7 @@ changelogs version
 |---------|-------------|
 | `init` | Initialize `.changelog/` directory |
 | `add` | Create a new changelog interactively |
+| `add --ai "claude -p"` | Generate changelog using AI |
 | `status` | Show pending changelogs and releases |
 | `version` | Apply version bumps and update changelogs |
 | `publish` | Publish unpublished packages to crates.io |
@@ -81,7 +104,37 @@ Added new feature X that does Y.
 Fixed bug Z in the parser.
 ```
 
-## GitHub Action
+## GitHub Actions
+
+### Auto-generate Changelogs on PRs
+
+```yaml
+name: Changelog
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - run: cargo install changelogs
+      - run: npm install -g @anthropic-ai/claude-code
+      - uses: wevm/changelogs-rs/gen@main
+        with:
+          ai: 'claude -p'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+### Create RC PR or Release
 
 ```yaml
 name: Release
@@ -106,7 +159,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-**The action automatically handles both versioning and publishing:**
+**The release action automatically handles both versioning and publishing:**
 
 1. **If changelogs exist** → Creates/updates a "Version Packages" PR
 2. **If no changelogs** (PR was just merged) → Publishes unpublished packages to crates.io
