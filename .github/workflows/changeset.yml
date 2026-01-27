@@ -44,7 +44,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           git diff origin/${{ github.base_ref }}...HEAD > /tmp/diff.txt
-          changelogs add --ai "claude"
+          changelogs add --ai "claude -p"
 
       - name: Commit changeset
         if: steps.check.outputs.found == 'false'
