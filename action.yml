@@ -187,10 +187,9 @@ runs:
           echo "Creating release for $tag"
           
           # Extract changelog section for this tag from CHANGELOG.md
-          # Format: ## `package@version` followed by content until next ## or EOF
+          changelog_notes=""
           if [ -f "CHANGELOG.md" ]; then
-            # Escape special chars in tag for regex, extract section content (skip the header line)
-            notes=$(awk -v tag="$tag" '
+            changelog_notes=$(awk -v tag="$tag" '
               BEGIN { found=0; printing=0 }
               /^## `.*`/ {
                 if (printing) exit
@@ -202,7 +201,26 @@ runs:
             ' CHANGELOG.md)
           fi
           
-          if [ -n "$notes" ]; then
+          # Generate GitHub's notes to get "New Contributors" and "Full Changelog"
+          github_notes=$(gh api repos/${{ github.repository }}/releases/generate-notes \
+            -f tag_name="$tag" \
+            --jq '.body' 2>/dev/null || echo "")
+          
+          # Remove "What's Changed" section, keep "New Contributors" and "Full Changelog"
+          github_extras=$(echo "$github_notes" | awk '
+            BEGIN { skip=0 }
+            /^## What'\''s Changed/ { skip=1; next }
+            /^## New Contributors/ { skip=0 }
+            /^\*\*Full Changelog\*\*/ { skip=0 }
+            !skip { print }
+          ')
+          
+          # Combine: changelog content + GitHub extras (New Contributors, Full Changelog)
+          if [ -n "$changelog_notes" ]; then
+            notes="$changelog_notes"
+            if [ -n "$github_extras" ]; then
+              notes="$notes"$'\n'"$github_extras"
+            fi
             echo "$notes" | gh release create "$tag" --notes-file - || true
           else
             gh release create "$tag" --generate-notes || true
