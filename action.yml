@@ -81,21 +81,21 @@ runs:
       id: body
       shell: bash
       run: |
-        EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-        echo "body<<$EOF" >> $GITHUB_OUTPUT
-        echo "This PR was opened by the Changelogs release workflow." >> $GITHUB_OUTPUT
-        echo "" >> $GITHUB_OUTPUT
-        echo "When you're ready to release, merge this PR and the packages will be published." >> $GITHUB_OUTPUT
-        echo "" >> $GITHUB_OUTPUT
-        echo "---" >> $GITHUB_OUTPUT
-        echo "" >> $GITHUB_OUTPUT
+        {
+          echo "This PR was opened by the Changelogs release workflow."
+          echo ""
+          echo "When you're ready to release, merge this PR and the packages will be published."
+          echo ""
+          echo "---"
+          echo ""
+          
+          # Show only the new changelog entries (what was added in this PR)
+          if [ -f "CHANGELOG.md" ]; then
+            git diff origin/${{ github.ref_name }}...HEAD -- CHANGELOG.md | grep '^+' | grep -v '^+++' | sed 's/^+//' | head -100
+          fi
+        } > /tmp/pr-body.md
         
-        # Show only the new changelog entries (what was added in this PR)
-        if [ -f "CHANGELOG.md" ]; then
-          git diff origin/${{ github.ref_name }}...HEAD -- CHANGELOG.md | grep '^+' | grep -v '^+++' | sed 's/^+//' | head -100 >> $GITHUB_OUTPUT
-        fi
-        
-        echo "$EOF" >> $GITHUB_OUTPUT
+        echo "body-file=/tmp/pr-body.md" >> $GITHUB_OUTPUT
 
     - name: Create or update PR
       if: steps.check.outputs.hasChangelogs == 'true'
@@ -105,7 +105,7 @@ runs:
         token: ${{ inputs.github-token }}
         branch: ${{ inputs.branch }}
         title: ${{ inputs.title }}
-        body: ${{ steps.body.outputs.body }}
+        body-path: ${{ steps.body.outputs.body-file }}
         base: ${{ github.ref_name }}
         commit-message: ${{ inputs.commit }}
         delete-branch: true
