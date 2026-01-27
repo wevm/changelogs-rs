@@ -144,3 +144,15 @@ runs:
       if: steps.check.outputs.hasChangelogs == 'false' && inputs.publish != '' && steps.publish.outputs.published == 'true'
       shell: bash
       run: git push --follow-tags
+
+    - name: Create GitHub releases
+      if: steps.check.outputs.hasChangelogs == 'false' && inputs.publish != '' && steps.publish.outputs.published == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        # Get tags that were just pushed
+        for tag in $(git tag --points-at HEAD); do
+          echo "Creating release for $tag"
+          gh release create "$tag" --generate-notes || true
+        done
