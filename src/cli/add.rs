@@ -141,15 +141,16 @@ Respond with ONLY a markdown file in this exact format (no explanation, no code 
 
 ---
 <package-name>: patch
+<another-package>: minor
 ---
 
 Brief description of changes.
 
 Rules:
-- Replace <package-name> with the actual package name from the list above
+- Replace <package-name> with actual package names from the list above
+- Include ALL packages that were modified in the frontmatter
 - Use "patch" for bug fixes, "minor" for features, "major" for breaking changes
 - Keep the summary concise (1-3 sentences)
-- Only include packages that were actually modified
 - Use past tense (e.g. "Added", "Fixed", "Removed")
 
 Git diff:
