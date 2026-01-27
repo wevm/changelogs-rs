@@ -90,9 +90,9 @@ runs:
         echo "---" >> $GITHUB_OUTPUT
         echo "" >> $GITHUB_OUTPUT
         
-        # Include only the latest version's changelog (up to the next version header)
+        # Show only the new changelog entries (what was added in this PR)
         if [ -f "CHANGELOG.md" ]; then
-          awk '/^## /{if(found)exit; found=1} found' "CHANGELOG.md" | head -100 >> $GITHUB_OUTPUT
+          git diff origin/${{ github.ref_name }}...HEAD -- CHANGELOG.md | grep '^+' | grep -v '^+++' | sed 's/^+//' | head -100 >> $GITHUB_OUTPUT
         fi
         
         echo "$EOF" >> $GITHUB_OUTPUT
