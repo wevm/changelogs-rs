@@ -78,8 +78,8 @@ runs:
         output=$(${{ inputs.version }} 2>&1)
         echo "$output"
         
-        # Extract versions from output (e.g., "changelogs 0.0.1 → 0.1.0" -> "changelogs@v0.1.0")
-        all_versions=$(echo "$output" | grep -oE '[a-zA-Z0-9_-]+ [0-9]+\.[0-9]+\.[0-9]+ → [0-9]+\.[0-9]+\.[0-9]+' | sed 's/ .* → /@v/')
+        # Extract versions from output (e.g., "changelogs 0.0.1 → 0.1.0" -> "changelogs@0.1.0")
+        all_versions=$(echo "$output" | grep -oE '[a-zA-Z0-9_-]+ [0-9]+\.[0-9]+\.[0-9]+ → [0-9]+\.[0-9]+\.[0-9]+' | sed 's/ .* → /@/')
         count=$(echo "$all_versions" | grep -c . || echo 0)
         
         if [ "$count" -eq 0 ]; then
