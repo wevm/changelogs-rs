@@ -90,9 +90,9 @@ runs:
         echo "---" >> $GITHUB_OUTPUT
         echo "" >> $GITHUB_OUTPUT
         
-        # Include changelog content
+        # Include only the latest version's changelog (up to the next version header)
         if [ -f "CHANGELOG.md" ]; then
-          tail -n +3 "CHANGELOG.md" | head -100 >> $GITHUB_OUTPUT
+          awk '/^## /{if(found)exit; found=1} found' "CHANGELOG.md" | head -100 >> $GITHUB_OUTPUT
         fi
         
         echo "$EOF" >> $GITHUB_OUTPUT
