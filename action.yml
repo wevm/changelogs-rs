@@ -98,13 +98,13 @@ runs:
         fi
         echo "versions=$versions" >> $GITHUB_OUTPUT
         
-        # Build title with optional conventional commit prefix
+        # Build title and commit message with optional conventional commit prefix
         if [ "${{ inputs.conventional-commit }}" = "true" ]; then
           echo "title=chore: release $versions" >> $GITHUB_OUTPUT
-          echo "commit-msg=chore: release" >> $GITHUB_OUTPUT
+          echo "commit-msg=chore: release $versions" >> $GITHUB_OUTPUT
         else
           echo "title=Release $versions" >> $GITHUB_OUTPUT
-          echo "commit-msg=Release" >> $GITHUB_OUTPUT
+          echo "commit-msg=Release $versions" >> $GITHUB_OUTPUT
         fi
 
     - name: Generate PR body
