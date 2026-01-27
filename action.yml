@@ -90,13 +90,10 @@ runs:
         echo "---" >> $GITHUB_OUTPUT
         echo "" >> $GITHUB_OUTPUT
         
-        # Find and include changelog content
-        for changelog in $(git diff --name-only | grep "CHANGELOG.md"); do
-          if [ -f "$changelog" ]; then
-            # Get just the new content (skip the # Changelog header)
-            tail -n +3 "$changelog" | head -100
-          fi
-        done >> $GITHUB_OUTPUT
+        # Include changelog content
+        if [ -f "CHANGELOG.md" ]; then
+          tail -n +3 "CHANGELOG.md" | head -100 >> $GITHUB_OUTPUT
+        fi
         
         echo "$EOF" >> $GITHUB_OUTPUT
 
