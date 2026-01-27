@@ -89,9 +89,9 @@ runs:
           echo "---"
           echo ""
           
-          # Show only the new changelog entries (what was added in this PR)
+          # Show the new changelog entries (uncommitted changes from changelogs version)
           if [ -f "CHANGELOG.md" ]; then
-            git diff origin/${{ github.ref_name }}...HEAD -- CHANGELOG.md | grep '^+' | grep -v '^+++' | sed 's/^+//' | head -100 || true
+            git diff -- CHANGELOG.md | grep '^+' | grep -v '^+++' | sed 's/^+//' | head -100 || true
           fi
         } > /tmp/pr-body.md
         
