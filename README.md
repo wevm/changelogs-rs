@@ -125,13 +125,12 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - run: cargo install changelogs
-      - run: npm install -g @anthropic-ai/claude-code
-      - uses: wevm/changelogs-rs/gen@main
+      - run: npm install -g @sourcegraph/amp
+      - uses: wevm/changelogs-rs/gen@master
         with:
-          ai: 'claude -p'
+          ai: 'amp -x'
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AMP_API_KEY: ${{ secrets.AMP_API_KEY }}
 ```
 
 ### Create RC PR or Release
@@ -148,12 +147,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install changelogs
-      - uses: wevm/changelogs-rs@v1
+      - uses: wevm/changelogs-rs@master
         with:
-          version: changelogs version
-          publish: changelogs publish
           crate-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -168,11 +163,9 @@ jobs:
 
 | Input | Description | Default |
 |-------|-------------|---------|
-| `version` | Command to run for versioning | `changelogs version` |
-| `publish` | Command to run for publishing | - |
 | `crate-token` | Crates.io API token for publishing | - |
 | `commit` | Commit message for version bump | `Version Packages` |
-| `title` | Pull request title | `Version Packages` |
+| `conventional-commit` | Use conventional commit format | `false` |
 | `branch` | Branch name for the version PR | `changelog-release/main` |
 
 ### Action Outputs
