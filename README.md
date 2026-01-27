@@ -122,10 +122,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
+
       - run: npm install -g @sourcegraph/amp
+
       - uses: wevm/changelogs-rs/gen@master
         with:
           ai: 'amp -x'
@@ -148,8 +147,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: wevm/changelogs-rs@master
-        with:
-          crate-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
