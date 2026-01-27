@@ -32,7 +32,7 @@ enum Commands {
         instructions: Option<String>,
 
         /// Base ref to diff against (e.g. origin/main)
-        #[arg(short = 'r', long, name = "ref")]
+        #[arg(short = 'r', long = "ref")]
         base_ref: Option<String>,
     },
 
