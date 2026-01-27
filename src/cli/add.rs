@@ -226,7 +226,13 @@ fn run_ai_generation(
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow::anyhow!("AI command failed: {}", stderr));
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return Err(anyhow::anyhow!(
+            "AI command failed (exit code {:?}):\nstderr: {}\nstdout: {}",
+            output.status.code(),
+            stderr,
+            stdout
+        ));
     }
 
     let response = String::from_utf8_lossy(&output.stdout).to_string();
