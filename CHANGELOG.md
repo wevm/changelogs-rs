@@ -1,5 +1,11 @@
 # Changelog
 
+## `changelogs@0.2.1`
+
+### Patch Changes
+
+- Fixed action. (by @jxom, [411d91e](https://github.com/wevm/changelogs-rs/commit/411d91e))
+
 ## `changelogs@0.2.0`
 
 ### Minor Changes
