@@ -168,7 +168,7 @@ runs:
         echo "$output"
         
         # Parse published packages from output
-        packages=$(echo "$output" | grep -E "^\s+\S+\s+v[0-9]" | grep "✓" | awk '{print $1}' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+        packages=$(echo "$output" | { grep -E "^\s+\S+\s+v[0-9]" || true; } | { grep "✓" || true; } | awk '{print $1}' | jq -R -s -c 'split("\n") | map(select(length > 0))')
         
         if [ "$packages" != "[]" ] && [ -n "$packages" ]; then
           echo "published=true" >> $GITHUB_OUTPUT
