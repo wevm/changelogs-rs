@@ -1,5 +1,0 @@
----
-changelogs: patch
----
-
-Fixed action.
