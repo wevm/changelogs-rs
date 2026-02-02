@@ -86,7 +86,7 @@ impl Default for ChangelogConfig {
 #[serde(rename_all = "kebab-case")]
 pub enum ChangelogFormat {
     #[default]
-    PerCrate,
+    PerPkg,
     Root,
 }
 
@@ -105,7 +105,7 @@ fn default_dependent_bump() -> DependentBump {
 }
 
 fn default_changelog_format() -> ChangelogFormat {
-    ChangelogFormat::PerCrate
+    ChangelogFormat::PerPkg
 }
 
 impl Default for Config {
@@ -154,9 +154,9 @@ ecosystem = "auto"
 dependent_bump = "patch"
 
 [changelog]
-# "per-crate" - CHANGELOG.md in each package
+# "per-pkg" - CHANGELOG.md in each package
 # "root" - Single CHANGELOG.md at workspace root
-format = "per-crate"
+format = "per-pkg"
 
 # Fixed groups: all packages always share the same version
 # [[fixed]]
