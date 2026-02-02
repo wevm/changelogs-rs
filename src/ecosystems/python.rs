@@ -27,79 +27,74 @@ impl EcosystemAdapter for PythonAdapter {
         let content = std::fs::read_to_string(&pyproject_path)?;
         let doc: DocumentMut = content.parse()?;
 
-        let project = doc.get("project").ok_or_else(|| {
-            Error::PythonProjectNotFound(
-                "pyproject.toml must have a [project] section (PEP 621)".to_string(),
-            )
-        })?;
-
-        let name = project
-            .get("name")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::PythonProjectNotFound("project.name is required".to_string()))?;
-
-        if let Some(dynamic) = project.get("dynamic") {
-            if let Some(arr) = dynamic.as_array() {
-                for item in arr.iter() {
-                    if item.as_str() == Some("version") {
-                        return Err(Error::PythonDynamicVersion(
-                            "Dynamic versions are not supported. Use a static version in [project].version".to_string(),
-                        ));
-                    }
-                }
-            }
+        // Try PEP 621 [project] first, then fall back to Poetry [tool.poetry]
+        if let Some(pkg) = Self::try_pep621(&doc, root, &pyproject_path)? {
+            return Ok(vec![pkg]);
         }
 
-        let version_str = project.get("version").and_then(|v| v.as_str()).ok_or_else(|| {
-            Error::VersionNotFound("project.version is required and must be static".to_string())
-        })?;
+        if let Some(pkg) = Self::try_poetry(&doc, root, &pyproject_path)? {
+            return Ok(vec![pkg]);
+        }
 
-        let version: Version = version_str.parse().map_err(|e| {
-            Error::VersionParse(format!("Invalid semver version '{}': {}", version_str, e))
-        })?;
-
-        let dependencies = Self::extract_dependencies(&doc);
-
-        Ok(vec![Package {
-            name: name.to_string(),
-            version,
-            path: root.to_path_buf(),
-            manifest_path: pyproject_path,
-            dependencies,
-        }])
+        Err(Error::PythonProjectNotFound(
+            "pyproject.toml must have a [project] section (PEP 621) or [tool.poetry] section".to_string(),
+        ))
     }
 
     fn read_version(manifest_path: &Path) -> Result<Version> {
         let content = std::fs::read_to_string(manifest_path)?;
         let doc: DocumentMut = content.parse()?;
 
-        let version_str = doc
+        // Try PEP 621 first
+        if let Some(version_str) = doc
             .get("project")
             .and_then(|p| p.get("version"))
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::VersionNotFound(manifest_path.display().to_string()))?;
+        {
+            return Ok(version_str.parse()?);
+        }
 
-        Ok(version_str.parse()?)
+        // Try Poetry
+        if let Some(version_str) = doc
+            .get("tool")
+            .and_then(|t| t.get("poetry"))
+            .and_then(|p| p.get("version"))
+            .and_then(|v| v.as_str())
+        {
+            return Ok(version_str.parse()?);
+        }
+
+        Err(Error::VersionNotFound(manifest_path.display().to_string()))
     }
 
     fn write_version(manifest_path: &Path, version: &Version) -> Result<()> {
         let content = std::fs::read_to_string(manifest_path)?;
         let mut doc: DocumentMut = content.parse()?;
 
-        let project = doc
-            .get_mut("project")
-            .and_then(|p| p.as_table_mut())
-            .ok_or_else(|| {
-                Error::PythonProjectNotFound(format!(
-                    "No [project] section in {}",
-                    manifest_path.display()
-                ))
-            })?;
+        // Try PEP 621 first
+        if let Some(project) = doc.get_mut("project").and_then(|p| p.as_table_mut()) {
+            if project.contains_key("version") {
+                project["version"] = toml_edit::value(version.to_string());
+                std::fs::write(manifest_path, doc.to_string())?;
+                return Ok(());
+            }
+        }
 
-        project["version"] = toml_edit::value(version.to_string());
+        // Try Poetry
+        if let Some(tool) = doc.get_mut("tool").and_then(|t| t.as_table_mut()) {
+            if let Some(poetry) = tool.get_mut("poetry").and_then(|p| p.as_table_mut()) {
+                if poetry.contains_key("version") {
+                    poetry["version"] = toml_edit::value(version.to_string());
+                    std::fs::write(manifest_path, doc.to_string())?;
+                    return Ok(());
+                }
+            }
+        }
 
-        std::fs::write(manifest_path, doc.to_string())?;
-        Ok(())
+        Err(Error::PythonProjectNotFound(format!(
+            "No [project] or [tool.poetry] section with version in {}",
+            manifest_path.display()
+        )))
     }
 
     fn update_dependency_version(
@@ -251,6 +246,110 @@ impl EcosystemAdapter for PythonAdapter {
 }
 
 impl PythonAdapter {
+    fn try_pep621(doc: &DocumentMut, root: &Path, pyproject_path: &Path) -> Result<Option<Package>> {
+        let Some(project) = doc.get("project") else {
+            return Ok(None);
+        };
+
+        let Some(name) = project.get("name").and_then(|v| v.as_str()) else {
+            return Ok(None);
+        };
+
+        if let Some(dynamic) = project.get("dynamic") {
+            if let Some(arr) = dynamic.as_array() {
+                for item in arr.iter() {
+                    if item.as_str() == Some("version") {
+                        return Err(Error::PythonDynamicVersion(
+                            "Dynamic versions are not supported. Use a static version in [project].version".to_string(),
+                        ));
+                    }
+                }
+            }
+        }
+
+        let Some(version_str) = project.get("version").and_then(|v| v.as_str()) else {
+            return Ok(None);
+        };
+
+        let version: Version = version_str.parse().map_err(|e| {
+            Error::VersionParse(format!("Invalid semver version '{}': {}", version_str, e))
+        })?;
+
+        let dependencies = Self::extract_dependencies(doc);
+
+        Ok(Some(Package {
+            name: name.to_string(),
+            version,
+            path: root.to_path_buf(),
+            manifest_path: pyproject_path.to_path_buf(),
+            dependencies,
+        }))
+    }
+
+    fn try_poetry(doc: &DocumentMut, root: &Path, pyproject_path: &Path) -> Result<Option<Package>> {
+        let poetry = doc
+            .get("tool")
+            .and_then(|t| t.get("poetry"));
+
+        let Some(poetry) = poetry else {
+            return Ok(None);
+        };
+
+        let Some(name) = poetry.get("name").and_then(|v| v.as_str()) else {
+            return Ok(None);
+        };
+
+        let Some(version_str) = poetry.get("version").and_then(|v| v.as_str()) else {
+            return Err(Error::VersionNotFound(
+                "tool.poetry.version is required".to_string(),
+            ));
+        };
+
+        let version: Version = version_str.parse().map_err(|e| {
+            Error::VersionParse(format!("Invalid semver version '{}': {}", version_str, e))
+        })?;
+
+        let dependencies = Self::extract_poetry_dependencies(poetry);
+
+        Ok(Some(Package {
+            name: name.to_string(),
+            version,
+            path: root.to_path_buf(),
+            manifest_path: pyproject_path.to_path_buf(),
+            dependencies,
+        }))
+    }
+
+    fn extract_poetry_dependencies(poetry: &toml_edit::Item) -> Vec<String> {
+        let mut deps = Vec::new();
+
+        if let Some(dependencies) = poetry.get("dependencies").and_then(|d| d.as_table_like()) {
+            for (name, _) in dependencies.iter() {
+                if name != "python" {
+                    deps.push(Self::normalize_pep503(name));
+                }
+            }
+        }
+
+        if let Some(dev_deps) = poetry.get("dev-dependencies").and_then(|d| d.as_table_like()) {
+            for (name, _) in dev_deps.iter() {
+                deps.push(Self::normalize_pep503(name));
+            }
+        }
+
+        if let Some(group) = poetry.get("group").and_then(|g| g.as_table_like()) {
+            for (_, group_config) in group.iter() {
+                if let Some(group_deps) = group_config.get("dependencies").and_then(|d| d.as_table_like()) {
+                    for (name, _) in group_deps.iter() {
+                        deps.push(Self::normalize_pep503(name));
+                    }
+                }
+            }
+        }
+
+        deps
+    }
+
     fn update_deps_in_array(
         arr: &mut toml_edit::Array,
         dep_name: &str,
@@ -443,7 +542,7 @@ dependencies = ["requests>=2.0"]
     }
 
     #[test]
-    fn discover_missing_project_section() {
+    fn discover_missing_project_and_poetry_section() {
         let tmp = TempDir::new().unwrap();
         create_pyproject(
             tmp.path(),
@@ -456,7 +555,8 @@ build-backend = "hatchling.build"
 
         let result = PythonAdapter::discover(tmp.path());
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("[project]"));
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("[project]") || err.contains("[tool.poetry]"));
     }
 
     #[test]
@@ -489,7 +589,9 @@ name = "my-package"
 
         let result = PythonAdapter::discover(tmp.path());
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("version"));
+        let err = result.unwrap_err().to_string();
+        // Falls through to error about missing [project] or [tool.poetry] with valid version
+        assert!(err.contains("[project]") || err.contains("[tool.poetry]"));
     }
 
     #[test]
@@ -630,5 +732,107 @@ dependencies = [
 
         let result = PythonAdapter::rewrite_dependency("foo[bar,baz]>=1.0; os_name==\"nt\"", &new_version);
         assert_eq!(result, Some("foo[bar,baz]==2.0.0; os_name==\"nt\"".to_string()));
+    }
+
+    #[test]
+    fn discover_poetry_project() {
+        let tmp = TempDir::new().unwrap();
+        create_pyproject(
+            tmp.path(),
+            r#"
+[tool.poetry]
+name = "poetry-pkg"
+version = "0.5.0"
+description = "A Poetry project"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.28"
+click = "^8.0"
+"#,
+        );
+
+        let packages = PythonAdapter::discover(tmp.path()).unwrap();
+        assert_eq!(packages.len(), 1);
+        assert_eq!(packages[0].name, "poetry-pkg");
+        assert_eq!(packages[0].version.to_string(), "0.5.0");
+        assert!(packages[0].dependencies.contains(&"requests".to_string()));
+        assert!(packages[0].dependencies.contains(&"click".to_string()));
+        assert!(!packages[0].dependencies.contains(&"python".to_string()));
+    }
+
+    #[test]
+    fn discover_poetry_with_groups() {
+        let tmp = TempDir::new().unwrap();
+        create_pyproject(
+            tmp.path(),
+            r#"
+[tool.poetry]
+name = "poetry-pkg"
+version = "1.0.0"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.28"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0"
+black = "^23.0"
+"#,
+        );
+
+        let packages = PythonAdapter::discover(tmp.path()).unwrap();
+        assert_eq!(packages.len(), 1);
+        assert!(packages[0].dependencies.contains(&"requests".to_string()));
+        assert!(packages[0].dependencies.contains(&"pytest".to_string()));
+        assert!(packages[0].dependencies.contains(&"black".to_string()));
+    }
+
+    #[test]
+    fn poetry_read_and_write_version() {
+        let tmp = TempDir::new().unwrap();
+        let path = create_pyproject(
+            tmp.path(),
+            r#"
+[tool.poetry]
+name = "poetry-pkg"
+version = "1.0.0"
+"#,
+        );
+
+        let version = PythonAdapter::read_version(&path).unwrap();
+        assert_eq!(version.to_string(), "1.0.0");
+
+        let new_version: Version = "2.0.0".parse().unwrap();
+        PythonAdapter::write_version(&path, &new_version).unwrap();
+
+        let updated = PythonAdapter::read_version(&path).unwrap();
+        assert_eq!(updated.to_string(), "2.0.0");
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert!(content.contains("[tool.poetry]"));
+        assert!(content.contains("version = \"2.0.0\""));
+    }
+
+    #[test]
+    fn pep621_takes_precedence_over_poetry() {
+        let tmp = TempDir::new().unwrap();
+        create_pyproject(
+            tmp.path(),
+            r#"
+[project]
+name = "pep621-pkg"
+version = "1.0.0"
+
+[tool.poetry]
+name = "poetry-pkg"
+version = "2.0.0"
+"#,
+        );
+
+        let packages = PythonAdapter::discover(tmp.path()).unwrap();
+        assert_eq!(packages.len(), 1);
+        assert_eq!(packages[0].name, "pep621-pkg");
+        assert_eq!(packages[0].version.to_string(), "1.0.0");
     }
 }
