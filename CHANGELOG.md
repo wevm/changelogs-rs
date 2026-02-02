@@ -1,5 +1,11 @@
 # Changelog
 
+## `changelogs@0.3.0`
+
+### Minor Changes
+
+- Added language-agnostic ecosystem support with Python integration. The tool now supports both Cargo and Python projects through a unified ecosystem abstraction, with automatic detection and ecosystem-specific version management. (by @jxom, [#13](https://github.com/wevm/changelogs-rs/pull/13))
+
 ## `changelogs@0.2.1`
 
 ### Patch Changes
