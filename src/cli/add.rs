@@ -1,15 +1,22 @@
+use anyhow::Result;
 use changelogs::changelog_entry;
 use changelogs::error::Error;
 use changelogs::workspace::Workspace;
 use changelogs::{BumpType, Changelog, Ecosystem, Release};
-use anyhow::Result;
 use console::style;
 use inquire::{MultiSelect, Select, Text};
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>, base_ref: Option<String>, ecosystem: Option<Ecosystem>) -> Result<()> {
-    let workspace = Workspace::discover_with_ecosystem(ecosystem).map_err(|_| Error::NotInWorkspace)?;
+pub fn run(
+    empty: bool,
+    ai: Option<String>,
+    instructions: Option<String>,
+    base_ref: Option<String>,
+    ecosystem: Option<Ecosystem>,
+) -> Result<()> {
+    let workspace =
+        Workspace::discover_with_ecosystem(ecosystem).map_err(|_| Error::NotInWorkspace)?;
 
     if !workspace.is_initialized() {
         return Err(Error::NotInitialized.into());
@@ -36,21 +43,37 @@ pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>, base_r
     }
 
     if let Some(ai_command) = ai {
-        return run_ai_generation(&workspace, &changelog_dir, &ai_command, instructions.as_deref(), base_ref.as_deref());
+        return run_ai_generation(
+            &workspace,
+            &changelog_dir,
+            &ai_command,
+            instructions.as_deref(),
+            base_ref.as_deref(),
+        );
     }
 
-    let package_names: Vec<String> = workspace.package_names().iter().map(|s| s.to_string()).collect();
+    let package_names: Vec<String> = workspace
+        .package_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
 
     if package_names.is_empty() {
-        println!("{} No packages found in workspace", style("!").yellow().bold());
+        println!(
+            "{} No packages found in workspace",
+            style("!").yellow().bold()
+        );
         return Ok(());
     }
 
     let selected_packages = if package_names.len() == 1 {
         package_names.clone()
     } else {
-        let selected = MultiSelect::new("Which packages would you like to include?", package_names.clone())
-            .prompt()?;
+        let selected = MultiSelect::new(
+            "Which packages would you like to include?",
+            package_names.clone(),
+        )
+        .prompt()?;
 
         if selected.is_empty() {
             return Err(Error::NoPackagesSelected.into());
@@ -62,11 +85,8 @@ pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>, base_r
     let mut releases = Vec::new();
 
     for package in &selected_packages {
-        let bump_str = Select::new(
-            &format!("Bump type for {}:", package),
-            bump_options.clone(),
-        )
-        .prompt()?;
+        let bump_str =
+            Select::new(&format!("Bump type for {}:", package), bump_options.clone()).prompt()?;
 
         let bump = match bump_str {
             "patch" => BumpType::Patch,
@@ -81,17 +101,15 @@ pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>, base_r
         });
     }
 
-    let inline = Text::new("Summary (leave empty for vim):")
-        .prompt()?;
+    let inline = Text::new("Summary (leave empty for vim):").prompt()?;
 
     let summary = if inline.trim().is_empty() {
-        let temp_file = std::env::temp_dir().join(format!("changelog-{}.md", changelog_entry::generate_id()));
+        let temp_file =
+            std::env::temp_dir().join(format!("changelog-{}.md", changelog_entry::generate_id()));
         std::fs::write(&temp_file, "")?;
-        
-        std::process::Command::new("vim")
-            .arg(&temp_file)
-            .status()?;
-        
+
+        std::process::Command::new("vim").arg(&temp_file).status()?;
+
         let content = std::fs::read_to_string(&temp_file)?;
         std::fs::remove_file(&temp_file).ok();
         content
@@ -100,7 +118,10 @@ pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>, base_r
     };
 
     if summary.trim().is_empty() {
-        println!("{} Empty summary, changelog not created", style("!").yellow().bold());
+        println!(
+            "{} Empty summary, changelog not created",
+            style("!").yellow().bold()
+        );
         return Ok(());
     }
 
@@ -163,8 +184,10 @@ fn run_ai_generation(
     instructions: Option<&str>,
     base_ref: Option<&str>,
 ) -> Result<()> {
-
-    println!("{} Generating changelog with AI...", style("→").cyan().bold());
+    println!(
+        "{} Generating changelog with AI...",
+        style("→").cyan().bold()
+    );
 
     let diff_to_use = if let Some(base) = base_ref {
         // Diff against base ref (for CI/PR workflows)
@@ -173,9 +196,12 @@ fn run_ai_generation(
             .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
             .unwrap_or_default();
-        
+
         if diff.is_empty() {
-            return Err(anyhow::anyhow!("No changes detected between {} and HEAD.", base));
+            return Err(anyhow::anyhow!(
+                "No changes detected between {} and HEAD.",
+                base
+            ));
         }
         diff
     } else {
@@ -195,9 +221,11 @@ fn run_ai_generation(
                 .output()
                 .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
                 .unwrap_or_default();
-            
+
             if unstaged.is_empty() {
-                return Err(anyhow::anyhow!("No changes detected. Stage your changes with `git add` first, or use --ref to diff against a branch."));
+                return Err(anyhow::anyhow!(
+                    "No changes detected. Stage your changes with `git add` first, or use --ref to diff against a branch."
+                ));
             }
             unstaged
         }
@@ -211,7 +239,9 @@ fn run_ai_generation(
         .replace("{diff}", &diff_to_use);
 
     let parts: Vec<&str> = ai_command.split_whitespace().collect();
-    let (cmd, args) = parts.split_first().ok_or_else(|| anyhow::anyhow!("Invalid AI command"))?;
+    let (cmd, args) = parts
+        .split_first()
+        .ok_or_else(|| anyhow::anyhow!("Invalid AI command"))?;
 
     let mut child = Command::new(cmd)
         .args(args)
@@ -238,7 +268,7 @@ fn run_ai_generation(
     }
 
     let response = String::from_utf8_lossy(&output.stdout).to_string();
-    
+
     let cleaned = response
         .trim()
         .trim_start_matches("```markdown")
@@ -247,7 +277,7 @@ fn run_ai_generation(
         .trim();
 
     let changelog = changelogs::changelog_entry::parse("ai-generated", cleaned)?;
-    
+
     let id = changelog_entry::generate_id();
     let cs = Changelog {
         id: id.clone(),

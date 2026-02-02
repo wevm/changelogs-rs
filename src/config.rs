@@ -104,14 +104,16 @@ impl Config {
         }
 
         let content = std::fs::read_to_string(&config_path)?;
-        let config: Config = toml::from_str(&content).map_err(|e| Error::ConfigParse(e.to_string()))?;
+        let config: Config =
+            toml::from_str(&content).map_err(|e| Error::ConfigParse(e.to_string()))?;
 
         Ok(config)
     }
 
     pub fn save(&self, changelog_dir: &Path) -> Result<()> {
         let config_path = changelog_dir.join("config.toml");
-        let content = toml::to_string_pretty(self).map_err(|e| Error::ConfigParse(e.to_string()))?;
+        let content =
+            toml::to_string_pretty(self).map_err(|e| Error::ConfigParse(e.to_string()))?;
         std::fs::write(config_path, content)?;
         Ok(())
     }

@@ -6,6 +6,8 @@ on:
 
 jobs:
   check-changelog:
+    # Skip for fork PRs - we can't write to forks and can't checkout their branches
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: write

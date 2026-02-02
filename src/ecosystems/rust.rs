@@ -60,9 +60,9 @@ impl EcosystemAdapter for RustAdapter {
         let content = std::fs::read_to_string(manifest_path)?;
         let doc: DocumentMut = content.parse()?;
 
-        let version_str = doc["package"]["version"]
-            .as_str()
-            .ok_or_else(|| crate::error::Error::VersionNotFound(manifest_path.display().to_string()))?;
+        let version_str = doc["package"]["version"].as_str().ok_or_else(|| {
+            crate::error::Error::VersionNotFound(manifest_path.display().to_string())
+        })?;
 
         Ok(version_str.parse()?)
     }

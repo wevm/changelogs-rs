@@ -145,11 +145,7 @@ pub fn read_version(ecosystem: Ecosystem, manifest_path: &Path) -> Result<Versio
     }
 }
 
-pub fn write_version(
-    ecosystem: Ecosystem,
-    manifest_path: &Path,
-    version: &Version,
-) -> Result<()> {
+pub fn write_version(ecosystem: Ecosystem, manifest_path: &Path, version: &Version) -> Result<()> {
     match ecosystem {
         Ecosystem::Rust => RustAdapter::write_version(manifest_path, version),
         Ecosystem::Python => PythonAdapter::write_version(manifest_path, version),

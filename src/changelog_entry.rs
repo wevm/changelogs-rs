@@ -1,31 +1,31 @@
-use crate::error::{Error, Result};
 use crate::BumpType;
+use crate::error::{Error, Result};
 use rand::Rng;
 
 use std::path::Path;
 
 const ADJECTIVES: &[&str] = &[
-    "brave", "calm", "dark", "eager", "fair", "gentle", "happy", "icy", "jolly", "keen",
-    "lively", "merry", "nice", "odd", "proud", "quick", "rare", "shy", "tall", "unique",
-    "vast", "warm", "young", "zesty", "bold", "cool", "dry", "easy", "fast", "good",
-    "hot", "kind", "lazy", "mild", "neat", "old", "plain", "quiet", "rich", "safe",
-    "tidy", "ugly", "vain", "weak", "aged", "big", "cute", "dull", "evil", "fine",
+    "brave", "calm", "dark", "eager", "fair", "gentle", "happy", "icy", "jolly", "keen", "lively",
+    "merry", "nice", "odd", "proud", "quick", "rare", "shy", "tall", "unique", "vast", "warm",
+    "young", "zesty", "bold", "cool", "dry", "easy", "fast", "good", "hot", "kind", "lazy", "mild",
+    "neat", "old", "plain", "quiet", "rich", "safe", "tidy", "ugly", "vain", "weak", "aged", "big",
+    "cute", "dull", "evil", "fine",
 ];
 
 const NOUNS: &[&str] = &[
     "lions", "bears", "wolves", "eagles", "hawks", "foxes", "deer", "owls", "cats", "dogs",
-    "birds", "fish", "frogs", "bees", "ants", "mice", "rats", "bats", "crows", "doves",
-    "ducks", "geese", "hens", "pigs", "cows", "goats", "sheep", "horses", "mules", "donkeys",
-    "tigers", "pandas", "koalas", "seals", "whales", "sharks", "crabs", "clams", "snails", "slugs",
-    "trees", "rocks", "waves", "winds", "clouds", "stars", "moons", "suns", "hills", "lakes",
+    "birds", "fish", "frogs", "bees", "ants", "mice", "rats", "bats", "crows", "doves", "ducks",
+    "geese", "hens", "pigs", "cows", "goats", "sheep", "horses", "mules", "donkeys", "tigers",
+    "pandas", "koalas", "seals", "whales", "sharks", "crabs", "clams", "snails", "slugs", "trees",
+    "rocks", "waves", "winds", "clouds", "stars", "moons", "suns", "hills", "lakes",
 ];
 
 const VERBS: &[&str] = &[
-    "dance", "sing", "jump", "run", "walk", "swim", "fly", "crawl", "climb", "slide",
-    "roll", "spin", "twist", "shake", "wave", "bow", "nod", "wink", "smile", "laugh",
-    "cry", "shout", "whisper", "hum", "buzz", "roar", "growl", "bark", "meow", "chirp",
-    "play", "rest", "sleep", "wake", "eat", "drink", "cook", "bake", "read", "write",
-    "draw", "paint", "build", "break", "fix", "clean", "wash", "dry", "fold", "pack",
+    "dance", "sing", "jump", "run", "walk", "swim", "fly", "crawl", "climb", "slide", "roll",
+    "spin", "twist", "shake", "wave", "bow", "nod", "wink", "smile", "laugh", "cry", "shout",
+    "whisper", "hum", "buzz", "roar", "growl", "bark", "meow", "chirp", "play", "rest", "sleep",
+    "wake", "eat", "drink", "cook", "bake", "read", "write", "draw", "paint", "build", "break",
+    "fix", "clean", "wash", "dry", "fold", "pack",
 ];
 
 pub fn generate_id() -> String {
@@ -69,7 +69,7 @@ pub fn parse(id: &str, content: &str) -> Result<Changelog> {
     let summary = rest[end + 3..].trim().to_string();
 
     let frontmatter_value: serde_yaml::Value = serde_yaml::from_str(frontmatter)?;
-    
+
     let commit = frontmatter_value
         .get("commit")
         .and_then(|v| v.as_str())
@@ -78,12 +78,17 @@ pub fn parse(id: &str, content: &str) -> Result<Changelog> {
     let mut releases = Vec::new();
     if let serde_yaml::Value::Mapping(map) = frontmatter_value {
         for (key, value) in map {
-            if let (serde_yaml::Value::String(package), serde_yaml::Value::String(bump_str)) = (key, value) {
+            if let (serde_yaml::Value::String(package), serde_yaml::Value::String(bump_str)) =
+                (key, value)
+            {
                 if package == "commit" {
                     continue;
                 }
                 let bump: BumpType = bump_str.parse().map_err(|_| {
-                    Error::ChangelogParse(id.to_string(), format!("invalid bump type: {}", bump_str))
+                    Error::ChangelogParse(
+                        id.to_string(),
+                        format!("invalid bump type: {}", bump_str),
+                    )
                 })?;
                 releases.push(Release { package, bump });
             }
@@ -115,31 +120,39 @@ pub struct CommitInfo {
 
 pub fn get_commit_info(_changelog_dir: &Path, id: &str) -> Option<CommitInfo> {
     let file_path = format!(".changelog/{}.md", id);
-    
+
     let output = std::process::Command::new("git")
-        .args(["log", "--follow", "--diff-filter=A", "--format=%H %s", "-1", "--", &file_path])
+        .args([
+            "log",
+            "--follow",
+            "--diff-filter=A",
+            "--format=%H %s",
+            "-1",
+            "--",
+            &file_path,
+        ])
         .output()
         .ok()?;
-    
+
     let stdout = String::from_utf8_lossy(&output.stdout);
     let line = stdout.trim();
-    
+
     if line.is_empty() {
         return None;
     }
-    
+
     let parts: Vec<&str> = line.splitn(2, ' ').collect();
     if parts.len() < 2 {
         return None;
     }
-    
+
     let commit_sha = parts[0].to_string();
     let commit_message = parts[1];
-    
+
     let pr_number = extract_pr_number(commit_message);
-    
+
     let authors = get_commit_authors(&file_path);
-    
+
     Some(CommitInfo {
         pr_number,
         commit_sha,
@@ -152,18 +165,18 @@ fn get_commit_authors(file_path: &str) -> Vec<String> {
         .args(["log", "--follow", "--format=%aN", "--", file_path])
         .output()
         .ok();
-    
+
     let Some(output) = output else {
         return Vec::new();
     };
-    
+
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut authors: Vec<String> = stdout
         .lines()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
-    
+
     authors.sort();
     authors.dedup();
     authors
@@ -245,12 +258,10 @@ Fixed bug Y.
         let changelog = Changelog {
             id: "test".to_string(),
             summary: "Test summary".to_string(),
-            releases: vec![
-                Release {
-                    package: "my-crate".to_string(),
-                    bump: BumpType::Minor,
-                },
-            ],
+            releases: vec![Release {
+                package: "my-crate".to_string(),
+                bump: BumpType::Minor,
+            }],
             commit: None,
         };
 

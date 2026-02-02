@@ -37,7 +37,8 @@ impl EcosystemAdapter for PythonAdapter {
         }
 
         Err(Error::PythonProjectNotFound(
-            "pyproject.toml must have a [project] section (PEP 621) or [tool.poetry] section".to_string(),
+            "pyproject.toml must have a [project] section (PEP 621) or [tool.poetry] section"
+                .to_string(),
         ))
     }
 
@@ -110,7 +111,10 @@ impl EcosystemAdapter for PythonAdapter {
             return Ok(false);
         };
 
-        if let Some(arr) = project.get_mut("dependencies").and_then(|d| d.as_array_mut()) {
+        if let Some(arr) = project
+            .get_mut("dependencies")
+            .and_then(|d| d.as_array_mut())
+        {
             modified |= Self::update_deps_in_array(arr, dep_name, new_version);
         }
 
@@ -246,7 +250,11 @@ impl EcosystemAdapter for PythonAdapter {
 }
 
 impl PythonAdapter {
-    fn try_pep621(doc: &DocumentMut, root: &Path, pyproject_path: &Path) -> Result<Option<Package>> {
+    fn try_pep621(
+        doc: &DocumentMut,
+        root: &Path,
+        pyproject_path: &Path,
+    ) -> Result<Option<Package>> {
         let Some(project) = doc.get("project") else {
             return Ok(None);
         };
@@ -286,10 +294,12 @@ impl PythonAdapter {
         }))
     }
 
-    fn try_poetry(doc: &DocumentMut, root: &Path, pyproject_path: &Path) -> Result<Option<Package>> {
-        let poetry = doc
-            .get("tool")
-            .and_then(|t| t.get("poetry"));
+    fn try_poetry(
+        doc: &DocumentMut,
+        root: &Path,
+        pyproject_path: &Path,
+    ) -> Result<Option<Package>> {
+        let poetry = doc.get("tool").and_then(|t| t.get("poetry"));
 
         let Some(poetry) = poetry else {
             return Ok(None);
@@ -331,7 +341,10 @@ impl PythonAdapter {
             }
         }
 
-        if let Some(dev_deps) = poetry.get("dev-dependencies").and_then(|d| d.as_table_like()) {
+        if let Some(dev_deps) = poetry
+            .get("dev-dependencies")
+            .and_then(|d| d.as_table_like())
+        {
             for (name, _) in dev_deps.iter() {
                 deps.push(Self::normalize_pep503(name));
             }
@@ -339,7 +352,10 @@ impl PythonAdapter {
 
         if let Some(group) = poetry.get("group").and_then(|g| g.as_table_like()) {
             for (_, group_config) in group.iter() {
-                if let Some(group_deps) = group_config.get("dependencies").and_then(|d| d.as_table_like()) {
+                if let Some(group_deps) = group_config
+                    .get("dependencies")
+                    .and_then(|d| d.as_table_like())
+                {
                     for (name, _) in group_deps.iter() {
                         deps.push(Self::normalize_pep503(name));
                     }
@@ -459,7 +475,11 @@ impl PythonAdapter {
             None => (remaining.trim(), String::new()),
         };
 
-        Some((name.to_string(), format!("{}{}", extras, marker), version_spec.to_string()))
+        Some((
+            name.to_string(),
+            format!("{}{}", extras, marker),
+            version_spec.to_string(),
+        ))
     }
 
     fn dependency_matches(dep_str: &str, name: &str) -> bool {
@@ -538,7 +558,12 @@ dependencies = ["requests>=2.0"]
         let tmp = TempDir::new().unwrap();
         let result = PythonAdapter::discover(tmp.path());
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No pyproject.toml"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("No pyproject.toml")
+        );
     }
 
     #[test]
@@ -600,7 +625,10 @@ name = "my-package"
         assert_eq!(PythonAdapter::normalize_pep503("my_pkg"), "my-pkg");
         assert_eq!(PythonAdapter::normalize_pep503("my..pkg"), "my-pkg");
         assert_eq!(PythonAdapter::normalize_pep503("my---pkg"), "my-pkg");
-        assert_eq!(PythonAdapter::normalize_pep503("My_Cool.Package"), "my-cool-package");
+        assert_eq!(
+            PythonAdapter::normalize_pep503("My_Cool.Package"),
+            "my-cool-package"
+        );
         assert_eq!(PythonAdapter::normalize_pep503("pkg-"), "pkg");
         assert_eq!(PythonAdapter::normalize_pep503("pkg_-_"), "pkg");
     }
@@ -715,23 +743,40 @@ dependencies = [
 
     #[test]
     fn dependency_matches_normalized() {
-        assert!(PythonAdapter::dependency_matches("My_Package>=1.0", "my-package"));
-        assert!(PythonAdapter::dependency_matches("my-package>=1.0", "My_Package"));
-        assert!(!PythonAdapter::dependency_matches("other-pkg>=1.0", "my-package"));
+        assert!(PythonAdapter::dependency_matches(
+            "My_Package>=1.0",
+            "my-package"
+        ));
+        assert!(PythonAdapter::dependency_matches(
+            "my-package>=1.0",
+            "My_Package"
+        ));
+        assert!(!PythonAdapter::dependency_matches(
+            "other-pkg>=1.0",
+            "my-package"
+        ));
     }
 
     #[test]
     fn rewrite_dependency_preserves_extras_and_markers() {
         let new_version: Version = "2.0.0".parse().unwrap();
-        
+
         let result = PythonAdapter::rewrite_dependency("foo[bar]>=1.0", &new_version);
         assert_eq!(result, Some("foo[bar]==2.0.0".to_string()));
 
-        let result = PythonAdapter::rewrite_dependency("foo>=1.0; python_version>=\"3.8\"", &new_version);
-        assert_eq!(result, Some("foo==2.0.0; python_version>=\"3.8\"".to_string()));
+        let result =
+            PythonAdapter::rewrite_dependency("foo>=1.0; python_version>=\"3.8\"", &new_version);
+        assert_eq!(
+            result,
+            Some("foo==2.0.0; python_version>=\"3.8\"".to_string())
+        );
 
-        let result = PythonAdapter::rewrite_dependency("foo[bar,baz]>=1.0; os_name==\"nt\"", &new_version);
-        assert_eq!(result, Some("foo[bar,baz]==2.0.0; os_name==\"nt\"".to_string()));
+        let result =
+            PythonAdapter::rewrite_dependency("foo[bar,baz]>=1.0; os_name==\"nt\"", &new_version);
+        assert_eq!(
+            result,
+            Some("foo[bar,baz]==2.0.0; os_name==\"nt\"".to_string())
+        );
     }
 
     #[test]

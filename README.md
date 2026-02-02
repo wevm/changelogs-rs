@@ -2,12 +2,6 @@
 
 A Rust rewrite of [changesets](https://github.com/changesets/changesets) for Cargo workspaces.
 
-## Installation
-
-```bash
-cargo install changelogs
-```
-
 ## Quick Start
 
 ```bash
@@ -237,6 +231,28 @@ jobs:
 | `pullRequestNumber` | The PR number if created/updated |
 | `published` | Whether packages were published |
 | `publishedPackages` | JSON array of published packages |
+
+## Installation
+
+### Pre-built binaries (recommended)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/wevm/changelogs-rs/master/install.sh | sh
+```
+
+Or download directly from [GitHub Releases](https://github.com/wevm/changelogs-rs/releases):
+
+| Platform | Download |
+|----------|----------|
+| Linux (x86_64) | [changelogs-linux-amd64](https://github.com/wevm/changelogs-rs/releases/latest/download/changelogs-linux-amd64) |
+| macOS (Intel) | [changelogs-darwin-amd64](https://github.com/wevm/changelogs-rs/releases/latest/download/changelogs-darwin-amd64) |
+| macOS (Apple Silicon) | [changelogs-darwin-arm64](https://github.com/wevm/changelogs-rs/releases/latest/download/changelogs-darwin-arm64) |
+
+### From source
+
+```bash
+cargo install changelogs
+```
 
 ## License
 
