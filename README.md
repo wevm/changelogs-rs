@@ -66,6 +66,70 @@ flowchart LR
 | `version` | Apply version bumps and update changelogs |
 | `publish` | Publish unpublished packages to crates.io |
 
+## Python Support
+
+Changelogs supports Python packages using PEP 621 `pyproject.toml` files.
+
+### Requirements
+
+- **PEP 621 metadata**: Your `pyproject.toml` must have a `[project]` section with `name` and `version`
+- **Static version**: Dynamic versions (`dynamic = ["version"]`) are not supported
+- **Semantic versioning**: Versions must be valid semver (e.g., `1.2.3`, not PEP 440 epochs or local versions)
+- **Build tools**: `python -m build` and `twine` must be installed
+
+### Setup
+
+```bash
+# Install build dependencies
+pip install build twine
+
+# Initialize changelogs
+changelogs init --ecosystem python
+```
+
+### Publishing
+
+```bash
+# Publish to PyPI (uses TWINE_USERNAME/TWINE_PASSWORD or ~/.pypirc)
+changelogs publish
+```
+
+For CI, set `TWINE_USERNAME` and `TWINE_PASSWORD` environment variables (use `__token__` as username for API tokens).
+
+### GitHub Actions for Python
+
+```yaml
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - run: pip install build twine
+      
+      - uses: wevm/changelogs-rs@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+```
+
+### Limitations
+
+- Single-package repos only (no Python monorepo support)
+- PEP 621 `pyproject.toml` only (no `setup.py` or `setup.cfg`)
+- Semantic versioning only (no PEP 440 epochs, post releases, or local versions)
+
 ## Configuration
 
 `.changelog/config.toml`:

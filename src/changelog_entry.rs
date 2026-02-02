@@ -187,7 +187,7 @@ pub fn read_all(changelog_dir: &Path) -> Result<Vec<Changelog>> {
         let entry = entry?;
         let path = entry.path();
 
-        if path.extension().map_or(false, |ext| ext == "md") {
+        if path.extension().is_some_and(|ext| ext == "md") {
             let filename = path.file_stem().unwrap().to_string_lossy().to_string();
 
             if filename == "README" {

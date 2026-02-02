@@ -1,13 +1,17 @@
 use anyhow::Result;
-use changelogs::{Workspace, Config};
+use changelogs::{Config, Ecosystem, Package, Workspace};
 use std::process::Command;
 
-pub fn run(dry_run: bool, tag: Option<String>) -> Result<()> {
-    let workspace = Workspace::load()?;
+pub fn run_with_ecosystem(
+    dry_run: bool,
+    tag: Option<String>,
+    ecosystem: Option<Ecosystem>,
+) -> Result<()> {
+    let workspace = Workspace::load_with_ecosystem(ecosystem)?;
     let _config = Config::load(&workspace.changelog_dir)?;
 
     let packages = workspace.get_publishable_packages()?;
-    
+
     if packages.is_empty() {
         println!("No unpublished packages found");
         return Ok(());
@@ -15,53 +19,37 @@ pub fn run(dry_run: bool, tag: Option<String>) -> Result<()> {
 
     println!("🚀 Publishing {} package(s)...\n", packages.len());
 
-    let mut published: Vec<&changelogs::Package> = Vec::new();
-    let mut failed: Vec<&changelogs::Package> = Vec::new();
+    let mut published: Vec<&Package> = Vec::new();
+    let mut failed: Vec<&Package> = Vec::new();
 
     for pkg in packages {
         print!("  {} v{} ... ", pkg.name, pkg.version);
-        
-        if dry_run {
-            println!("(dry-run)");
-            published.push(pkg);
-            continue;
-        }
 
-        let mut cmd = Command::new("cargo");
-        cmd.arg("publish")
-            .arg("--package")
-            .arg(&pkg.name)
-            .arg("--no-verify")
-            .arg("--allow-dirty");
-        
-        if let Some(ref t) = tag {
-            cmd.env("CARGO_REGISTRY_DEFAULT", t);
-        }
-
-        let output = cmd.output()?;
-        
-        if output.status.success() {
-            println!("✓");
-            published.push(pkg);
-        } else {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            if stderr.contains("already uploaded") || stderr.contains("already exists") {
-                println!("(already published)");
-            } else {
-                println!("✗");
-                for line in stdout.lines().chain(stderr.lines()) {
-                    eprintln!("    {}", line);
+        match workspace.publish_package(pkg, dry_run, tag.as_deref()) {
+            Ok(true) => {
+                if dry_run {
+                    println!("(dry-run)");
+                } else {
+                    println!("✓");
                 }
+                published.push(pkg);
+            }
+            Ok(false) => {
+                println!("✗");
+                failed.push(pkg);
+            }
+            Err(e) => {
+                println!("✗");
+                eprintln!("    {}", e);
                 failed.push(pkg);
             }
         }
     }
 
     println!();
-    
+
     if !published.is_empty() && !dry_run {
-        create_git_tags(&published)?;
+        create_git_tags(&workspace, &published)?;
     }
 
     if !failed.is_empty() {
@@ -69,7 +57,10 @@ pub fn run(dry_run: bool, tag: Option<String>) -> Result<()> {
     }
 
     if dry_run {
-        println!("Dry run complete. {} package(s) would be published.", published.len());
+        println!(
+            "Dry run complete. {} package(s) would be published.",
+            published.len()
+        );
     } else {
         println!("Successfully published {} package(s)", published.len());
     }
@@ -77,19 +68,19 @@ pub fn run(dry_run: bool, tag: Option<String>) -> Result<()> {
     Ok(())
 }
 
-fn create_git_tags(packages: &[&changelogs::Package]) -> Result<()> {
+fn create_git_tags(workspace: &Workspace, packages: &[&Package]) -> Result<()> {
     for pkg in packages {
-        let tag = format!("{}@{}", pkg.name, pkg.version);
-        
+        let tag = workspace.tag_name(pkg);
+
         let status = Command::new("git")
             .args(["tag", "-a", &tag, "-m", &format!("Release {}", tag)])
             .status()?;
-        
+
         if status.success() {
             println!("Created git tag: {}", tag);
         }
     }
-    
+
     println!("\nDon't forget to push tags: git push --follow-tags");
     Ok(())
 }

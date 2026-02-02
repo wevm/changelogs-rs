@@ -1,11 +1,12 @@
 use changelogs::config::Config;
 use changelogs::error::Error;
 use changelogs::workspace::Workspace;
+use changelogs::Ecosystem;
 use anyhow::Result;
 use console::style;
 
-pub fn run() -> Result<()> {
-    let workspace = Workspace::discover().map_err(|_| Error::NotInWorkspace)?;
+pub fn run(ecosystem: Option<Ecosystem>) -> Result<()> {
+    let workspace = Workspace::discover_with_ecosystem(ecosystem).map_err(|_| Error::NotInWorkspace)?;
 
     if workspace.is_initialized() {
         return Err(Error::AlreadyInitialized.into());

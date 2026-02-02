@@ -1,104 +1,115 @@
+use crate::ecosystems::{self, Ecosystem, Package};
 use crate::error::{Error, Result};
-use cargo_metadata::{Metadata, MetadataCommand};
 use semver::Version;
 use std::collections::HashMap;
-use std::path::PathBuf;
-use std::process::Command;
-use toml_edit::DocumentMut;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct Workspace {
     pub root: PathBuf,
     pub changelog_dir: PathBuf,
-    pub packages: Vec<WorkspacePackage>,
-    #[allow(dead_code)]
-    metadata: Metadata,
+    pub packages: Vec<Package>,
+    pub ecosystem: Ecosystem,
 }
 
-#[derive(Debug, Clone)]
-pub struct WorkspacePackage {
-    pub name: String,
-    pub version: Version,
-    pub path: PathBuf,
-    pub manifest_path: PathBuf,
-    pub dependencies: Vec<String>,
-}
+pub type WorkspacePackage = Package;
 
 impl Workspace {
     pub fn discover() -> Result<Self> {
-        let metadata = MetadataCommand::new().exec()?;
+        Self::discover_with_ecosystem(None)
+    }
 
-        let workspace_root = metadata.workspace_root.clone().into_std_path_buf();
-        let workspace_members: std::collections::HashSet<_> =
-            metadata.workspace_members.iter().collect();
+    pub fn discover_with_ecosystem(ecosystem: Option<Ecosystem>) -> Result<Self> {
+        let cwd = std::env::current_dir()?;
 
-        let mut packages = Vec::new();
+        let ecosystem = ecosystem
+            .or_else(|| ecosystems::detect_ecosystem(&cwd))
+            .ok_or(Error::NotInWorkspace)?;
 
-        for package in &metadata.packages {
-            if !workspace_members.contains(&package.id) {
-                continue;
-            }
+        let root = Self::find_root(&cwd, ecosystem)?;
+        let packages = ecosystems::discover_packages(ecosystem, &root)?;
 
-            let deps: Vec<String> = package
-                .dependencies
-                .iter()
-                .filter_map(|dep| {
-                    metadata
-                        .packages
-                        .iter()
-                        .find(|p| p.name == dep.name && workspace_members.contains(&p.id))
-                        .map(|p| p.name.clone())
-                })
-                .collect();
-
-            packages.push(WorkspacePackage {
-                name: package.name.clone(),
-                version: package.version.clone(),
-                path: package
-                    .manifest_path
-                    .parent()
-                    .unwrap()
-                    .to_path_buf()
-                    .into_std_path_buf(),
-                manifest_path: package.manifest_path.clone().into_std_path_buf(),
-                dependencies: deps,
-            });
+        if packages.is_empty() {
+            return Err(Error::NotInWorkspace);
         }
 
-        let changelog_dir = workspace_root.join(".changelog");
+        let changelog_dir = root.join(".changelog");
+
         Ok(Workspace {
-            root: workspace_root,
+            root,
             changelog_dir,
             packages,
-            metadata,
+            ecosystem,
         })
+    }
+
+    fn find_root(start: &Path, ecosystem: Ecosystem) -> Result<PathBuf> {
+        let manifest_name = match ecosystem {
+            Ecosystem::Rust => "Cargo.toml",
+            Ecosystem::Python => "pyproject.toml",
+        };
+
+        let mut current = start.to_path_buf();
+
+        loop {
+            let manifest = current.join(manifest_name);
+            if manifest.exists() {
+                if ecosystem == Ecosystem::Rust {
+                    if let Ok(content) = std::fs::read_to_string(&manifest) {
+                        if content.contains("[workspace]") {
+                            return Ok(current);
+                        }
+                    }
+                }
+
+                let parent = current.parent();
+                if parent.is_none() {
+                    return Ok(current);
+                }
+
+                let parent_manifest = parent.unwrap().join(manifest_name);
+                if !parent_manifest.exists() {
+                    return Ok(current);
+                }
+
+                if ecosystem == Ecosystem::Rust {
+                    if let Ok(content) = std::fs::read_to_string(&parent_manifest) {
+                        if content.contains("[workspace]") {
+                            current = parent.unwrap().to_path_buf();
+                            continue;
+                        }
+                    }
+                }
+
+                return Ok(current);
+            }
+
+            match current.parent() {
+                Some(parent) => current = parent.to_path_buf(),
+                None => return Err(Error::NotInWorkspace),
+            }
+        }
     }
 
     pub fn load() -> Result<Self> {
         Self::discover()
     }
 
+    pub fn load_with_ecosystem(ecosystem: Option<Ecosystem>) -> Result<Self> {
+        Self::discover_with_ecosystem(ecosystem)
+    }
+
     pub fn changelog_dir(&self) -> PathBuf {
         self.root.join(".changelog")
     }
 
-    pub fn get_publishable_packages(&self) -> Result<Vec<&WorkspacePackage>> {
+    pub fn get_publishable_packages(&self) -> Result<Vec<&Package>> {
         let mut publishable = Vec::new();
 
         for pkg in &self.packages {
-            let output = Command::new("cargo")
-                .args(["search", "--limit", "1", &pkg.name])
-                .output()?;
+            let is_published = ecosystems::is_published(self.ecosystem, &pkg.name, &pkg.version)?;
 
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            
-            let is_published_with_same_version = stdout
-                .lines()
-                .next()
-                .map(|line| line.contains(&format!("\"{}\"", pkg.version)))
-                .unwrap_or(false);
-
-            if !is_published_with_same_version {
+            if !is_published {
                 publishable.push(pkg);
             }
         }
@@ -110,7 +121,7 @@ impl Workspace {
         self.changelog_dir().exists()
     }
 
-    pub fn get_package(&self, name: &str) -> Option<&WorkspacePackage> {
+    pub fn get_package(&self, name: &str) -> Option<&Package> {
         self.packages.iter().find(|p| p.name == name)
     }
 
@@ -123,97 +134,23 @@ impl Workspace {
             .get_package(package_name)
             .ok_or_else(|| Error::PackageNotFound(package_name.to_string()))?;
 
-        let content = std::fs::read_to_string(&package.manifest_path)?;
-        let mut doc: DocumentMut = content.parse()?;
-
-        doc["package"]["version"] = toml_edit::value(new_version.to_string());
-
-        std::fs::write(&package.manifest_path, doc.to_string())?;
-        Ok(())
+        ecosystems::write_version(self.ecosystem, &package.manifest_path, new_version)
     }
 
     pub fn update_dependency_versions(&self, updates: &HashMap<String, Version>) -> Result<()> {
-        for package in &self.packages {
-            let content = std::fs::read_to_string(&package.manifest_path)?;
-            let mut doc: DocumentMut = content.parse()?;
-            let mut modified = false;
+        ecosystems::update_dependency_versions(self.ecosystem, &self.packages, &self.root, updates)
+    }
 
-            for (dep_name, new_version) in updates {
-                for section in &["dependencies", "dev-dependencies", "build-dependencies"] {
-                    if let Some(deps) = doc.get_mut(section) {
-                        if let Some(dep) = deps.get_mut(dep_name) {
-                            if let Some(table) = dep.as_inline_table_mut() {
-                                if table.contains_key("version") {
-                                    table.insert("version", new_version.to_string().into());
-                                    modified = true;
-                                }
-                            } else if let Some(table) = dep.as_table_mut() {
-                                if table.contains_key("version") {
-                                    table["version"] = toml_edit::value(new_version.to_string());
-                                    modified = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    pub fn publish_package(
+        &self,
+        pkg: &Package,
+        dry_run: bool,
+        registry: Option<&str>,
+    ) -> Result<bool> {
+        ecosystems::publish(self.ecosystem, pkg, dry_run, registry)
+    }
 
-            if let Some(workspace) = doc.get_mut("workspace") {
-                if let Some(deps) = workspace.get_mut("dependencies") {
-                    for (dep_name, new_version) in updates {
-                        if let Some(dep) = deps.get_mut(dep_name) {
-                            if let Some(table) = dep.as_inline_table_mut() {
-                                if table.contains_key("version") {
-                                    table.insert("version", new_version.to_string().into());
-                                    modified = true;
-                                }
-                            } else if let Some(table) = dep.as_table_mut() {
-                                if table.contains_key("version") {
-                                    table["version"] = toml_edit::value(new_version.to_string());
-                                    modified = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if modified {
-                std::fs::write(&package.manifest_path, doc.to_string())?;
-            }
-        }
-
-        let root_manifest = self.root.join("Cargo.toml");
-        if root_manifest.exists() {
-            let content = std::fs::read_to_string(&root_manifest)?;
-            let mut doc: DocumentMut = content.parse()?;
-            let mut modified = false;
-
-            if let Some(workspace) = doc.get_mut("workspace") {
-                if let Some(deps) = workspace.get_mut("dependencies") {
-                    for (dep_name, new_version) in updates {
-                        if let Some(dep) = deps.get_mut(dep_name) {
-                            if let Some(table) = dep.as_inline_table_mut() {
-                                if table.contains_key("version") {
-                                    table.insert("version", new_version.to_string().into());
-                                    modified = true;
-                                }
-                            } else if let Some(table) = dep.as_table_mut() {
-                                if table.contains_key("version") {
-                                    table["version"] = toml_edit::value(new_version.to_string());
-                                    modified = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if modified {
-                std::fs::write(&root_manifest, doc.to_string())?;
-            }
-        }
-
-        Ok(())
+    pub fn tag_name(&self, pkg: &Package) -> String {
+        ecosystems::tag_name(self.ecosystem, pkg)
     }
 }
