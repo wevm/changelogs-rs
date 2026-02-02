@@ -1,5 +1,11 @@
 # Changelog
 
+## `changelogs@0.3.0`
+
+### Minor Changes
+
+- Added Python ecosystem support with both PEP 621 and Poetry formats. (by @BrendanRyan, [#17](https://github.com/wevm/changelogs-rs/pull/17))
+
 ## `changelogs@0.2.1`
 
 ### Patch Changes
