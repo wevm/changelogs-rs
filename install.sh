@@ -62,7 +62,53 @@ echo ""
 echo "Installed ${BINARY} to ${INSTALL_DIR}/${BINARY}"
 
 if ! echo "$PATH" | grep -q "${INSTALL_DIR}"; then
-    echo ""
-    echo "Add ${INSTALL_DIR} to your PATH:"
-    echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+    SHELL_NAME=$(basename "$SHELL")
+    case "$SHELL_NAME" in
+        zsh)
+            RC_FILE="${ZDOTDIR:-$HOME}/.zshenv"
+            PATH_EXPORT='export PATH="$HOME/.local/bin:$PATH"'
+            ;;
+        bash)
+            if [ -f "$HOME/.bash_profile" ]; then
+                RC_FILE="$HOME/.bash_profile"
+            else
+                RC_FILE="$HOME/.bashrc"
+            fi
+            PATH_EXPORT='export PATH="$HOME/.local/bin:$PATH"'
+            ;;
+        fish)
+            RC_FILE="$HOME/.config/fish/config.fish"
+            PATH_EXPORT='fish_add_path $HOME/.local/bin'
+            ;;
+        sh|dash)
+            RC_FILE="$HOME/.profile"
+            PATH_EXPORT='export PATH="$HOME/.local/bin:$PATH"'
+            ;;
+        *)
+            RC_FILE=""
+            PATH_EXPORT='export PATH="$HOME/.local/bin:$PATH"'
+            ;;
+    esac
+
+    if [ -n "$RC_FILE" ]; then
+        if ! grep -q '.local/bin' "$RC_FILE" 2>/dev/null; then
+            mkdir -p "$(dirname "$RC_FILE")"
+            echo "" >> "$RC_FILE"
+            echo "# Added by changelogs installer" >> "$RC_FILE"
+            echo "$PATH_EXPORT" >> "$RC_FILE"
+            echo "Added ~/.local/bin to PATH in $RC_FILE"
+            echo "Run 'source $RC_FILE' or restart your shell to use changelogs"
+        fi
+    else
+        echo ""
+        echo "Add ~/.local/bin to your PATH:"
+        echo "  $PATH_EXPORT"
+    fi
 fi
+
+echo ""
+echo "Get started:"
+echo "  changelogs init    # Initialize in your project"
+echo "  changelogs add     # Create a changelog entry"
+echo "  changelogs status  # View pending changes"
+echo "  changelogs --help  # See all commands"
