@@ -1,9 +1,11 @@
 pub mod changelog_entry;
 pub mod changelog_writer;
 pub mod config;
+pub mod ecosystem;
 pub mod error;
 pub mod graph;
 pub mod plan;
+pub mod version_editor;
 pub mod workspace;
 
 use serde::{Deserialize, Serialize};

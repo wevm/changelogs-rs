@@ -154,13 +154,33 @@ mod tests {
     use crate::Release;
     use semver::Version;
 
+    #[allow(dead_code)]
     fn mock_package(name: &str, version: &str, deps: Vec<&str>) -> crate::workspace::WorkspacePackage {
+        use crate::ecosystem::{PackageInfo, VersionTarget};
+        let version_parsed = Version::parse(version).unwrap();
+        let path = std::path::PathBuf::from(format!("crates/{}", name));
+        let manifest_path = std::path::PathBuf::from(format!("crates/{}/Cargo.toml", name));
+
+        let info = PackageInfo {
+            name: name.to_string(),
+            version: version.to_string(),
+            path: path.clone(),
+            manifest_path: manifest_path.clone(),
+            version_targets: vec![VersionTarget::TomlKey {
+                file: manifest_path.clone(),
+                key_path: vec!["package".to_string(), "version".to_string()],
+            }],
+            dependencies: deps.iter().map(|s| s.to_string()).collect(),
+        };
+
         crate::workspace::WorkspacePackage {
             name: name.to_string(),
-            version: Version::parse(version).unwrap(),
-            path: std::path::PathBuf::from(format!("crates/{}", name)),
-            manifest_path: std::path::PathBuf::from(format!("crates/{}/Cargo.toml", name)),
+            version: version_parsed,
+            version_string: version.to_string(),
+            path,
+            manifest_path,
             dependencies: deps.into_iter().map(String::from).collect(),
+            info,
         }
     }
 
@@ -187,7 +207,7 @@ mod tests {
             },
         ];
 
-        let config = Config::default();
+        let _config = Config::default();
 
         let bump_map: HashMap<String, BumpType> = changelogs
             .iter()

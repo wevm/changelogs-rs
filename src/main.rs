@@ -5,7 +5,7 @@ mod cli;
 
 #[derive(Parser)]
 #[command(name = "changelogs")]
-#[command(about = "Manage versioning and changelogs for Cargo workspaces")]
+#[command(about = "Manage versioning and changelogs for Cargo and Python projects")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]

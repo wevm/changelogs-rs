@@ -2,8 +2,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("not in a Cargo workspace")]
-    NotInWorkspace,
+    #[error("no supported project found (Cargo.toml, pyproject.toml, or setup.cfg)")]
+    NoEcosystemFound,
 
     #[error("changelogs already initialized")]
     AlreadyInitialized,
@@ -25,6 +25,21 @@ pub enum Error {
 
     #[error("no packages selected")]
     NoPackagesSelected,
+
+    #[error("dynamic version detected: {0}")]
+    DynamicVersion(String),
+
+    #[error("unsupported manifest: {0}")]
+    UnsupportedManifest(String),
+
+    #[error("file not found: {0}")]
+    FileNotFound(String),
+
+    #[error("failed to publish: {0}")]
+    PublishFailed(String),
+
+    #[error("version update failed: {0}")]
+    VersionUpdateFailed(String),
 
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
