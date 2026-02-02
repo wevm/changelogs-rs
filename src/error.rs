@@ -2,7 +2,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("not in a Cargo workspace")]
+    #[error("not in a workspace")]
     NotInWorkspace,
 
     #[error("changelogs already initialized")]
@@ -13,6 +13,9 @@ pub enum Error {
 
     #[error("invalid bump type: {0}")]
     InvalidBumpType(String),
+
+    #[error("invalid ecosystem: {0}")]
+    InvalidEcosystem(String),
 
     #[error("package not found: {0}")]
     PackageNotFound(String),
@@ -25,6 +28,24 @@ pub enum Error {
 
     #[error("no packages selected")]
     NoPackagesSelected,
+
+    #[error("version not found in {0}")]
+    VersionNotFound(String),
+
+    #[error("failed to parse version: {0}")]
+    VersionParse(String),
+
+    #[error("Python project not found: {0}")]
+    PythonProjectNotFound(String),
+
+    #[error("Python dynamic version: {0}")]
+    PythonDynamicVersion(String),
+
+    #[error("publish failed: {0}")]
+    PublishFailed(String),
+
+    #[error("failed to check PyPI: {0}")]
+    PypiCheckFailed(String),
 
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
@@ -40,6 +61,9 @@ pub enum Error {
 
     #[error("cargo metadata error: {0}")]
     CargoMetadata(#[from] cargo_metadata::Error),
+
+    #[error("semver parse error: {0}")]
+    SemverParse(#[from] semver::Error),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

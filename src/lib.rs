@@ -1,6 +1,7 @@
 pub mod changelog_entry;
 pub mod changelog_writer;
 pub mod config;
+pub mod ecosystems;
 pub mod error;
 pub mod graph;
 pub mod plan;
@@ -10,8 +11,9 @@ use serde::{Deserialize, Serialize};
 
 pub use changelog_entry::{Changelog, Release};
 pub use config::Config;
+pub use ecosystems::{Ecosystem, Package};
 pub use plan::{PackageRelease, ReleasePlan};
-pub use workspace::{Workspace, WorkspacePackage as Package};
+pub use workspace::Workspace;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

@@ -1,15 +1,15 @@
 use changelogs::changelog_entry;
 use changelogs::error::Error;
 use changelogs::workspace::Workspace;
-use changelogs::{BumpType, Changelog, Release};
+use changelogs::{BumpType, Changelog, Ecosystem, Release};
 use anyhow::Result;
 use console::style;
 use inquire::{MultiSelect, Select, Text};
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>, base_ref: Option<String>) -> Result<()> {
-    let workspace = Workspace::discover().map_err(|_| Error::NotInWorkspace)?;
+pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>, base_ref: Option<String>, ecosystem: Option<Ecosystem>) -> Result<()> {
+    let workspace = Workspace::discover_with_ecosystem(ecosystem).map_err(|_| Error::NotInWorkspace)?;
 
     if !workspace.is_initialized() {
         return Err(Error::NotInitialized.into());

@@ -1,13 +1,18 @@
 use anyhow::Result;
+use changelogs::Ecosystem;
 use clap::{Parser, Subcommand};
 
 mod cli;
 
 #[derive(Parser)]
 #[command(name = "changelogs")]
-#[command(about = "Manage versioning and changelogs for Cargo workspaces")]
+#[command(about = "Manage versioning and changelogs for workspaces")]
 #[command(version)]
 struct Cli {
+    /// Ecosystem to use (rust, python). Auto-detected if not specified.
+    #[arg(long, global = true)]
+    ecosystem: Option<Ecosystem>,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -62,11 +67,11 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Init => cli::init::run()?,
-        Commands::Add { empty, ai, instructions, base_ref } => cli::add::run(empty, ai, instructions, base_ref)?,
-        Commands::Status { verbose } => cli::status::run(verbose)?,
-        Commands::Version => cli::version::run()?,
-        Commands::Publish { dry_run, tag } => cli::publish::run(dry_run, tag)?,
+        Commands::Init => cli::init::run(cli.ecosystem)?,
+        Commands::Add { empty, ai, instructions, base_ref } => cli::add::run(empty, ai, instructions, base_ref, cli.ecosystem)?,
+        Commands::Status { verbose } => cli::status::run(verbose, cli.ecosystem)?,
+        Commands::Version => cli::version::run(cli.ecosystem)?,
+        Commands::Publish { dry_run, tag } => cli::publish::run_with_ecosystem(dry_run, tag, cli.ecosystem)?,
     }
 
     Ok(())

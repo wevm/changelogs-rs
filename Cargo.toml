@@ -43,5 +43,9 @@ rand = "0.9"
 chrono = "0.4"
 regex = "1"
 
+# HTTP (for PyPI API)
+ureq = { version = "2", features = ["json"] }
+serde_json = "1"
+
 [dev-dependencies]
 tempfile = "3"

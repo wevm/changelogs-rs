@@ -1,9 +1,13 @@
+use crate::ecosystems::Ecosystem;
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    #[serde(default)]
+    pub ecosystem: Option<Ecosystem>,
+
     #[serde(default = "default_dependent_bump")]
     pub dependent_bump: DependentBump,
 
@@ -80,6 +84,7 @@ fn default_changelog_format() -> ChangelogFormat {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            ecosystem: None,
             dependent_bump: default_dependent_bump(),
             changelog: ChangelogConfig::default(),
             fixed: Vec::new(),
@@ -112,18 +117,21 @@ impl Config {
     }
 
     pub fn default_toml() -> &'static str {
-        r#"# How to bump packages that depend on changed packages
+        r#"# Ecosystem: "rust" | "python" (auto-detected if not specified)
+# ecosystem = "rust"
+
+# How to bump packages that depend on changed packages
 # "patch" | "minor" | "none"
 dependent_bump = "patch"
 
 [changelog]
-# "per-crate" - CHANGELOG.md in each crate
+# "per-crate" - CHANGELOG.md in each package
 # "root" - Single CHANGELOG.md at workspace root
 format = "per-crate"
 
-# Fixed groups: all crates always share the same version
+# Fixed groups: all packages always share the same version
 # [[fixed]]
-# members = ["crate-a", "crate-b"]
+# members = ["package-a", "package-b"]
 
 # Linked groups: versions sync when released together
 # [[linked]]

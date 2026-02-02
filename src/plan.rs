@@ -154,8 +154,8 @@ mod tests {
     use crate::Release;
     use semver::Version;
 
-    fn mock_package(name: &str, version: &str, deps: Vec<&str>) -> crate::workspace::WorkspacePackage {
-        crate::workspace::WorkspacePackage {
+    fn mock_package(name: &str, version: &str, deps: Vec<&str>) -> crate::ecosystems::Package {
+        crate::ecosystems::Package {
             name: name.to_string(),
             version: Version::parse(version).unwrap(),
             path: std::path::PathBuf::from(format!("crates/{}", name)),
