@@ -265,3 +265,87 @@ dev = [
     let content = std::fs::read_to_string(&manifest_path).unwrap();
     assert!(content.contains("pytest[cov]==8.0.0"));
 }
+
+#[test]
+fn test_poetry_discover() {
+    let temp_dir = TempDir::new().unwrap();
+    create_pyproject(
+        temp_dir.path(),
+        r#"[tool.poetry]
+name = "poetry-package"
+version = "1.2.3"
+description = "A Poetry project"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.28"
+click = "^8.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0"
+"#,
+    );
+
+    let packages = PythonAdapter::discover(temp_dir.path()).unwrap();
+
+    assert_eq!(packages.len(), 1);
+    assert_eq!(packages[0].name, "poetry-package");
+    assert_eq!(packages[0].version, Version::new(1, 2, 3));
+    assert!(packages[0].dependencies.contains(&"requests".to_string()));
+    assert!(packages[0].dependencies.contains(&"click".to_string()));
+    assert!(packages[0].dependencies.contains(&"pytest".to_string()));
+    assert!(!packages[0].dependencies.contains(&"python".to_string()));
+}
+
+#[test]
+fn test_poetry_read_write_version() {
+    let temp_dir = TempDir::new().unwrap();
+    create_pyproject(
+        temp_dir.path(),
+        r#"[tool.poetry]
+name = "poetry-package"
+version = "1.0.0"
+description = "Test"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+"#,
+    );
+
+    let manifest_path = temp_dir.path().join("pyproject.toml");
+
+    let version = PythonAdapter::read_version(&manifest_path).unwrap();
+    assert_eq!(version, Version::new(1, 0, 0));
+
+    let new_version = Version::new(2, 0, 0);
+    PythonAdapter::write_version(&manifest_path, &new_version).unwrap();
+
+    let updated_version = PythonAdapter::read_version(&manifest_path).unwrap();
+    assert_eq!(updated_version, Version::new(2, 0, 0));
+
+    let content = std::fs::read_to_string(&manifest_path).unwrap();
+    assert!(content.contains("[tool.poetry]"));
+    assert!(content.contains("version = \"2.0.0\""));
+}
+
+#[test]
+fn test_pep621_takes_precedence_over_poetry() {
+    let temp_dir = TempDir::new().unwrap();
+    create_pyproject(
+        temp_dir.path(),
+        r#"[project]
+name = "pep621-package"
+version = "1.0.0"
+
+[tool.poetry]
+name = "poetry-package"
+version = "2.0.0"
+"#,
+    );
+
+    let packages = PythonAdapter::discover(temp_dir.path()).unwrap();
+
+    assert_eq!(packages.len(), 1);
+    assert_eq!(packages[0].name, "pep621-package");
+    assert_eq!(packages[0].version, Version::new(1, 0, 0));
+}
