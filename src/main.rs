@@ -19,9 +19,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Initialize changelogs in this workspace
-    Init,
-
     /// Create a new changelog
     Add {
         /// Create an empty changelog (no packages)
@@ -41,15 +38,8 @@ enum Commands {
         base_ref: Option<String>,
     },
 
-    /// Show pending changelogs and releases
-    Status {
-        /// Show detailed changelog contents
-        #[arg(long)]
-        verbose: bool,
-    },
-
-    /// Apply version bumps and update changelogs
-    Version,
+    /// Initialize changelogs in this workspace
+    Init,
 
     /// Publish unpublished packages to crates.io
     Publish {
@@ -61,24 +51,38 @@ enum Commands {
         #[arg(long)]
         tag: Option<String>,
     },
+
+    /// Show pending changelogs and releases
+    Status {
+        /// Show detailed changelog contents
+        #[arg(long)]
+        verbose: bool,
+    },
+
+    /// Update changelogs to the latest version
+    Up,
+
+    /// Apply version bumps and update changelogs
+    Version,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Init => cli::init::run(cli.ecosystem)?,
         Commands::Add {
             empty,
             ai,
             instructions,
             base_ref,
         } => cli::add::run(empty, ai, instructions, base_ref, cli.ecosystem)?,
-        Commands::Status { verbose } => cli::status::run(verbose, cli.ecosystem)?,
-        Commands::Version => cli::version::run(cli.ecosystem)?,
+        Commands::Init => cli::init::run(cli.ecosystem)?,
         Commands::Publish { dry_run, tag } => {
             cli::publish::run_with_ecosystem(dry_run, tag, cli.ecosystem)?
         }
+        Commands::Status { verbose } => cli::status::run(verbose, cli.ecosystem)?,
+        Commands::Up => cli::up::run()?,
+        Commands::Version => cli::version::run(cli.ecosystem)?,
     }
 
     Ok(())
