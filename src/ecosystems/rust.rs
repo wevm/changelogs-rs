@@ -87,39 +87,18 @@ impl EcosystemAdapter for RustAdapter {
         let mut modified = false;
 
         for section in &["dependencies", "dev-dependencies", "build-dependencies"] {
-            if let Some(deps) = doc.get_mut(section) {
-                if let Some(dep) = deps.get_mut(dep_name) {
-                    if let Some(table) = dep.as_inline_table_mut() {
-                        if table.contains_key("version") {
-                            table.insert("version", new_version.to_string().into());
-                            modified = true;
-                        }
-                    } else if let Some(table) = dep.as_table_mut() {
-                        if table.contains_key("version") {
-                            table["version"] = toml_edit::value(new_version.to_string());
-                            modified = true;
-                        }
-                    }
-                }
-            }
+            let Some(dep) = doc.get_mut(section).and_then(|d| d.get_mut(dep_name)) else {
+                continue;
+            };
+            modified |= Self::update_dep_version_in_item(dep, new_version);
         }
 
-        if let Some(workspace) = doc.get_mut("workspace") {
-            if let Some(deps) = workspace.get_mut("dependencies") {
-                if let Some(dep) = deps.get_mut(dep_name) {
-                    if let Some(table) = dep.as_inline_table_mut() {
-                        if table.contains_key("version") {
-                            table.insert("version", new_version.to_string().into());
-                            modified = true;
-                        }
-                    } else if let Some(table) = dep.as_table_mut() {
-                        if table.contains_key("version") {
-                            table["version"] = toml_edit::value(new_version.to_string());
-                            modified = true;
-                        }
-                    }
-                }
-            }
+        if let Some(dep) = doc
+            .get_mut("workspace")
+            .and_then(|w| w.get_mut("dependencies"))
+            .and_then(|d| d.get_mut(dep_name))
+        {
+            modified |= Self::update_dep_version_in_item(dep, new_version);
         }
 
         if modified {
@@ -180,6 +159,21 @@ impl EcosystemAdapter for RustAdapter {
 }
 
 impl RustAdapter {
+    fn update_dep_version_in_item(dep: &mut toml_edit::Item, new_version: &Version) -> bool {
+        if let Some(table) = dep.as_inline_table_mut() {
+            if table.contains_key("version") {
+                table.insert("version", new_version.to_string().into());
+                return true;
+            }
+        } else if let Some(table) = dep.as_table_mut() {
+            if table.contains_key("version") {
+                table["version"] = toml_edit::value(new_version.to_string());
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn update_all_dependency_versions(
         packages: &[Package],
         root: &Path,
@@ -192,34 +186,28 @@ impl RustAdapter {
         }
 
         let root_manifest = root.join("Cargo.toml");
-        if root_manifest.exists() {
-            let content = std::fs::read_to_string(&root_manifest)?;
-            let mut doc: DocumentMut = content.parse()?;
-            let mut modified = false;
+        if !root_manifest.exists() {
+            return Ok(());
+        }
 
-            if let Some(workspace) = doc.get_mut("workspace") {
-                if let Some(deps) = workspace.get_mut("dependencies") {
-                    for (dep_name, new_version) in updates {
-                        if let Some(dep) = deps.get_mut(dep_name) {
-                            if let Some(table) = dep.as_inline_table_mut() {
-                                if table.contains_key("version") {
-                                    table.insert("version", new_version.to_string().into());
-                                    modified = true;
-                                }
-                            } else if let Some(table) = dep.as_table_mut() {
-                                if table.contains_key("version") {
-                                    table["version"] = toml_edit::value(new_version.to_string());
-                                    modified = true;
-                                }
-                            }
-                        }
-                    }
+        let content = std::fs::read_to_string(&root_manifest)?;
+        let mut doc: DocumentMut = content.parse()?;
+        let mut modified = false;
+
+        if let Some(deps) = doc
+            .get_mut("workspace")
+            .and_then(|w| w.get_mut("dependencies"))
+            .and_then(|d| d.as_table_mut())
+        {
+            for (dep_name, new_version) in updates {
+                if let Some(dep) = deps.get_mut(dep_name) {
+                    modified |= Self::update_dep_version_in_item(dep, new_version);
                 }
             }
+        }
 
-            if modified {
-                std::fs::write(&root_manifest, doc.to_string())?;
-            }
+        if modified {
+            std::fs::write(&root_manifest, doc.to_string())?;
         }
 
         Ok(())
