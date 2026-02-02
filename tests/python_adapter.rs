@@ -29,7 +29,7 @@ fn test_python_discover() {
 fn test_python_read_version() {
     let root = fixture_path("python-simple");
     let manifest_path = root.join("pyproject.toml");
-    
+
     let version = PythonAdapter::read_version(&manifest_path).unwrap();
     assert_eq!(version, Version::new(0, 1, 0));
 }
@@ -38,7 +38,7 @@ fn test_python_read_version() {
 fn test_python_write_version() {
     let temp_dir = TempDir::new().unwrap();
     let pyproject_path = temp_dir.path().join("pyproject.toml");
-    
+
     let original_content = r#"[project]
 name = "test-package"
 version = "1.0.0"
@@ -49,10 +49,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 "#;
     std::fs::write(&pyproject_path, original_content).unwrap();
-    
+
     let new_version = Version::new(2, 0, 0);
     PythonAdapter::write_version(&pyproject_path, &new_version).unwrap();
-    
+
     let updated_content = std::fs::read_to_string(&pyproject_path).unwrap();
     assert!(updated_content.contains("version = \"2.0.0\""));
     assert!(updated_content.contains("name = \"test-package\""));
@@ -63,7 +63,7 @@ build-backend = "hatchling.build"
 fn test_python_discover_rejects_dynamic_version() {
     let temp_dir = TempDir::new().unwrap();
     let pyproject_path = temp_dir.path().join("pyproject.toml");
-    
+
     let content = r#"[project]
 name = "dynamic-package"
 dynamic = ["version"]
@@ -73,7 +73,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 "#;
     std::fs::write(&pyproject_path, content).unwrap();
-    
+
     let result = PythonAdapter::discover(temp_dir.path());
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -84,13 +84,13 @@ build-backend = "hatchling.build"
 fn test_python_discover_requires_project_section() {
     let temp_dir = TempDir::new().unwrap();
     let pyproject_path = temp_dir.path().join("pyproject.toml");
-    
+
     let content = r#"[build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 "#;
     std::fs::write(&pyproject_path, content).unwrap();
-    
+
     let result = PythonAdapter::discover(temp_dir.path());
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -101,12 +101,12 @@ build-backend = "hatchling.build"
 fn test_ecosystem_detection() {
     let rust_dir = TempDir::new().unwrap();
     std::fs::write(rust_dir.path().join("Cargo.toml"), "[package]").unwrap();
-    
+
     let python_dir = TempDir::new().unwrap();
     std::fs::write(python_dir.path().join("pyproject.toml"), "[project]").unwrap();
-    
+
     let empty_dir = TempDir::new().unwrap();
-    
+
     assert_eq!(
         changelogs::ecosystems::detect_ecosystem(rust_dir.path()),
         Some(Ecosystem::Rust)
@@ -158,8 +158,7 @@ dependencies = [
     let manifest_path = temp_dir.path().join("pyproject.toml");
     let new_version = Version::new(3, 0, 0);
     let modified =
-        PythonAdapter::update_dependency_version(&manifest_path, "requests", &new_version)
-            .unwrap();
+        PythonAdapter::update_dependency_version(&manifest_path, "requests", &new_version).unwrap();
 
     assert!(modified);
     let content = std::fs::read_to_string(&manifest_path).unwrap();

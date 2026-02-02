@@ -1,8 +1,8 @@
+use crate::BumpType;
 use crate::changelog_entry::Changelog;
 use crate::config::{Config, DependentBump};
 use crate::graph::DependencyGraph;
 use crate::workspace::Workspace;
-use crate::BumpType;
 use semver::Version;
 use std::collections::HashMap;
 
@@ -29,11 +29,7 @@ pub fn bump_version(version: &Version, bump: BumpType) -> Version {
     }
 }
 
-pub fn assemble(
-    workspace: &Workspace,
-    changelogs: Vec<Changelog>,
-    config: &Config,
-) -> ReleasePlan {
+pub fn assemble(workspace: &Workspace, changelogs: Vec<Changelog>, config: &Config) -> ReleasePlan {
     let graph = DependencyGraph::from_workspace(workspace);
 
     let mut bump_map: HashMap<String, BumpType> = HashMap::new();
@@ -154,6 +150,7 @@ mod tests {
     use crate::Release;
     use semver::Version;
 
+    #[allow(dead_code)]
     fn mock_package(name: &str, version: &str, deps: Vec<&str>) -> crate::ecosystems::Package {
         crate::ecosystems::Package {
             name: name.to_string(),
@@ -187,7 +184,7 @@ mod tests {
             },
         ];
 
-        let config = Config::default();
+        let _config = Config::default();
 
         let bump_map: HashMap<String, BumpType> = changelogs
             .iter()

@@ -1,17 +1,18 @@
+use anyhow::Result;
+use changelogs::Ecosystem;
 use changelogs::changelog_entry;
 use changelogs::changelog_writer;
 use changelogs::config::Config;
 use changelogs::error::Error;
 use changelogs::plan;
 use changelogs::workspace::Workspace;
-use changelogs::Ecosystem;
-use anyhow::Result;
 use console::style;
 use semver::Version;
 use std::collections::HashMap;
 
 pub fn run(ecosystem: Option<Ecosystem>) -> Result<()> {
-    let workspace = Workspace::discover_with_ecosystem(ecosystem).map_err(|_| Error::NotInWorkspace)?;
+    let workspace =
+        Workspace::discover_with_ecosystem(ecosystem).map_err(|_| Error::NotInWorkspace)?;
 
     if !workspace.is_initialized() {
         return Err(Error::NotInitialized.into());

@@ -1,12 +1,13 @@
+use anyhow::Result;
+use changelogs::Ecosystem;
 use changelogs::config::Config;
 use changelogs::error::Error;
 use changelogs::workspace::Workspace;
-use changelogs::Ecosystem;
-use anyhow::Result;
 use console::style;
 
 pub fn run(ecosystem: Option<Ecosystem>) -> Result<()> {
-    let workspace = Workspace::discover_with_ecosystem(ecosystem).map_err(|_| Error::NotInWorkspace)?;
+    let workspace =
+        Workspace::discover_with_ecosystem(ecosystem).map_err(|_| Error::NotInWorkspace)?;
 
     if workspace.is_initialized() {
         return Err(Error::AlreadyInitialized.into());
@@ -53,9 +54,15 @@ Run `changelogs version` to apply version bumps and generate changelogs.
     );
 
     println!("\nNext steps:");
-    println!("  1. Run {} to create your first changelog", style("changelogs add").cyan());
+    println!(
+        "  1. Run {} to create your first changelog",
+        style("changelogs add").cyan()
+    );
     println!("  2. Commit the changelog file with your PR");
-    println!("  3. Run {} to apply versions", style("changelogs version").cyan());
+    println!(
+        "  3. Run {} to apply versions",
+        style("changelogs version").cyan()
+    );
 
     Ok(())
 }

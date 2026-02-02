@@ -68,10 +68,17 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Init => cli::init::run(cli.ecosystem)?,
-        Commands::Add { empty, ai, instructions, base_ref } => cli::add::run(empty, ai, instructions, base_ref, cli.ecosystem)?,
+        Commands::Add {
+            empty,
+            ai,
+            instructions,
+            base_ref,
+        } => cli::add::run(empty, ai, instructions, base_ref, cli.ecosystem)?,
         Commands::Status { verbose } => cli::status::run(verbose, cli.ecosystem)?,
         Commands::Version => cli::version::run(cli.ecosystem)?,
-        Commands::Publish { dry_run, tag } => cli::publish::run_with_ecosystem(dry_run, tag, cli.ecosystem)?,
+        Commands::Publish { dry_run, tag } => {
+            cli::publish::run_with_ecosystem(dry_run, tag, cli.ecosystem)?
+        }
     }
 
     Ok(())
