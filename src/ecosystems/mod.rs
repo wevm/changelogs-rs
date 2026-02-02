@@ -18,6 +18,22 @@ pub enum Ecosystem {
     Python,
 }
 
+impl Ecosystem {
+    const RUST_ALIASES: &[&str] = &["rust", "cargo"];
+    const PYTHON_ALIASES: &[&str] = &["python", "pypi"];
+
+    pub fn from_alias(s: &str) -> Option<Self> {
+        let lower = s.to_lowercase();
+        if Self::RUST_ALIASES.contains(&lower.as_str()) {
+            Some(Ecosystem::Rust)
+        } else if Self::PYTHON_ALIASES.contains(&lower.as_str()) {
+            Some(Ecosystem::Python)
+        } else {
+            None
+        }
+    }
+}
+
 impl std::fmt::Display for Ecosystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -31,11 +47,7 @@ impl std::str::FromStr for Ecosystem {
     type Err = crate::error::Error;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "rust" | "cargo" => Ok(Ecosystem::Rust),
-            "python" | "pypi" => Ok(Ecosystem::Python),
-            _ => Err(crate::error::Error::InvalidEcosystem(s.to_string())),
-        }
+        Self::from_alias(s).ok_or_else(|| crate::error::Error::InvalidEcosystem(s.to_string()))
     }
 }
 

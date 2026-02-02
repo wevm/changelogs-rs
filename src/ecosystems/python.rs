@@ -111,38 +111,21 @@ impl EcosystemAdapter for PythonAdapter {
         let mut doc: DocumentMut = content.parse()?;
         let mut modified = false;
 
-        if let Some(project) = doc.get_mut("project") {
-            if let Some(deps) = project.get_mut("dependencies") {
-                if let Some(arr) = deps.as_array_mut() {
-                    for i in 0..arr.len() {
-                        if let Some(dep_str) = arr.get(i).and_then(|v| v.as_str()) {
-                            if Self::dependency_matches(dep_str, dep_name) {
-                                if let Some(new_dep) = Self::rewrite_dependency(dep_str, new_version) {
-                                    arr.replace(i, new_dep);
-                                    modified = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        let Some(project) = doc.get_mut("project") else {
+            return Ok(false);
+        };
 
-            if let Some(optional_deps) = project.get_mut("optional-dependencies") {
-                if let Some(table) = optional_deps.as_table_mut() {
-                    for (_key, value) in table.iter_mut() {
-                        if let Some(arr) = value.as_array_mut() {
-                            for i in 0..arr.len() {
-                                if let Some(dep_str) = arr.get(i).and_then(|v| v.as_str()) {
-                                    if Self::dependency_matches(dep_str, dep_name) {
-                                        if let Some(new_dep) = Self::rewrite_dependency(dep_str, new_version) {
-                                            arr.replace(i, new_dep);
-                                            modified = true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+        if let Some(arr) = project.get_mut("dependencies").and_then(|d| d.as_array_mut()) {
+            modified |= Self::update_deps_in_array(arr, dep_name, new_version);
+        }
+
+        if let Some(table) = project
+            .get_mut("optional-dependencies")
+            .and_then(|d| d.as_table_mut())
+        {
+            for (_key, value) in table.iter_mut() {
+                if let Some(arr) = value.as_array_mut() {
+                    modified |= Self::update_deps_in_array(arr, dep_name, new_version);
                 }
             }
         }
@@ -268,6 +251,27 @@ impl EcosystemAdapter for PythonAdapter {
 }
 
 impl PythonAdapter {
+    fn update_deps_in_array(
+        arr: &mut toml_edit::Array,
+        dep_name: &str,
+        new_version: &Version,
+    ) -> bool {
+        let mut modified = false;
+        for i in 0..arr.len() {
+            let Some(dep_str) = arr.get(i).and_then(|v| v.as_str()) else {
+                continue;
+            };
+            if !Self::dependency_matches(dep_str, dep_name) {
+                continue;
+            }
+            if let Some(new_dep) = Self::rewrite_dependency(dep_str, new_version) {
+                arr.replace(i, new_dep);
+                modified = true;
+            }
+        }
+        modified
+    }
+
     fn extract_dependencies(doc: &DocumentMut) -> Vec<String> {
         let mut deps = Vec::new();
 
