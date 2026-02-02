@@ -8,7 +8,7 @@ use anyhow::Result;
 use console::style;
 
 pub fn run(verbose: bool) -> Result<()> {
-    let workspace = Workspace::discover().map_err(|_| Error::NotInWorkspace)?;
+    let workspace = Workspace::discover().map_err(|_| Error::NoEcosystemFound)?;
 
     if !workspace.is_initialized() {
         return Err(Error::NotInitialized.into());

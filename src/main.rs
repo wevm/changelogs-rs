@@ -5,7 +5,7 @@ mod cli;
 
 #[derive(Parser)]
 #[command(name = "changelogs")]
-#[command(about = "Manage versioning and changelogs for Cargo workspaces")]
+#[command(about = "Manage versioning and changelogs for Cargo and Python projects")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
@@ -46,7 +46,7 @@ enum Commands {
     /// Apply version bumps and update changelogs
     Version,
 
-    /// Publish unpublished packages to crates.io
+    /// Publish unpublished packages to their registry
     Publish {
         /// Perform a dry run without actually publishing
         #[arg(long)]

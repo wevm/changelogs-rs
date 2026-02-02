@@ -9,7 +9,7 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 pub fn run(empty: bool, ai: Option<String>, instructions: Option<String>, base_ref: Option<String>) -> Result<()> {
-    let workspace = Workspace::discover().map_err(|_| Error::NotInWorkspace)?;
+    let workspace = Workspace::discover().map_err(|_| Error::NoEcosystemFound)?;
 
     if !workspace.is_initialized() {
         return Err(Error::NotInitialized.into());

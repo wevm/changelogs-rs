@@ -170,7 +170,7 @@ pub fn write_changelogs(
     let changelog_dir = &workspace.changelog_dir;
     
     match format {
-        ChangelogFormat::PerCrate => {
+        ChangelogFormat::PerPkg => {
             for release in releases {
                 if let Some(package) = workspace.get_package(&release.name) {
                     let entry = generate_entry(release, changelogs, changelog_dir);
