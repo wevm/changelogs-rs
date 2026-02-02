@@ -46,7 +46,7 @@ enum Commands {
     /// Apply version bumps and update changelogs
     Version,
 
-    /// Publish unpublished packages to crates.io
+    /// Publish unpublished packages to their registry
     Publish {
         /// Perform a dry run without actually publishing
         #[arg(long)]
