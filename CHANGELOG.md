@@ -1,5 +1,11 @@
 # Changelog
 
+## `changelogs@0.4.0`
+
+### Minor Changes
+
+- Added `changelogs up` command for self-update functionality and improved install script with automatic PATH configuration for multiple shells. (by @jxom, [#20](https://github.com/wevm/changelogs-rs/pull/20))
+
 ## `changelogs@0.3.0`
 
 ### Minor Changes
