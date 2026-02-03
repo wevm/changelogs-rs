@@ -37,32 +37,32 @@ changelogs version
 flowchart LR
     subgraph Development
         A[Make Changes] --> B[Open PR]
-        B --> C{AI generates<br/>changelog}
-        C --> D[Merge PR]
+        B --> C{Bot comments<br/>with changelog link}
+        C --> D[Add changelog]
+        D --> E[Merge PR]
     end
     subgraph Release
-        D --> E[/RC PR created with changelog/]
-        E --> F[Merge RC PR]
-        F --> G[/📦 Packages released/]
+        E --> F[/RC PR created/]
+        F --> G[Merge RC PR]
+        G --> H[/📦 Packages released/]
     end
 ```
 
 ### Development
 
-| # | Step | Example |
-|:-:|:-----|--------:|
-| 1 | Implement feature & make changes to your code | |
-| 2 | Open a PR to propose your changes | [PR #20](https://github.com/wevm/changelogs/pull/20) |
-| → | Changelogs are auto-generated via AI | [Action](https://github.com/wevm/changelogs/actions/runs/21611102210/job/62279809755) · [Generated](https://github.com/wevm/changelogs/pull/20/files#diff-29deee10b009554f662a4a8a0579ad9c514f5458f91c61503fef5c49a50ee915) |
-| 3 | Merge the PR – changelogs get staged | [`.changelog/`](https://github.com/wevm/changelogs/tree/2b98da3f2e2f89549e324f98145ce64cb68f287b/.changelog) |
+| # | Step | Description |
+|:-:|:-----|:------------|
+| 1 | Make changes & open PR | Implement your feature or fix |
+| 2 | Bot comments on PR | Links to add/edit changelog (AI pre-fills if enabled) |
+| 3 | Add changelog & merge | Changelog gets staged in `.changelog/` |
 
-### Release (Candidate)
+### Release
 
-| # | Step | Example |
-|:-:|:-----|--------:|
-| 1 | Push to main triggers the Release Candidate workflow | [Action](https://github.com/wevm/changelogs/actions/runs/21611161512/job/62280000547) |
-| 2 | Workflow creates or updates a Release Candidate PR | [PR&nbsp;#21](https://github.com/wevm/changelogs/pull/21) |
-| 3 | Merge the PR to release packages and publish the changelog | [`v0.4.0`&nbsp;release](https://github.com/wevm/changelogs/releases/tag/changelogs%400.4.0) |
+| # | Step | Description |
+|:-:|:-----|:------------|
+| 1 | Push to main | Triggers release workflow |
+| 2 | RC PR created | Version bumps and changelog updates |
+| 3 | Merge RC PR | Packages published, GitHub releases created |
 
 ## Installation
 
