@@ -37,32 +37,32 @@ changelogs version
 flowchart LR
     subgraph Development
         A[Make Changes] --> B[Open PR]
-        B --> C{AI generates<br/>changelog}
-        C --> D[Merge PR]
+        B --> C{Bot comments<br/>with changelog link}
+        C --> D[Add changelog]
+        D --> E[Merge PR]
     end
     subgraph Release
-        D --> E[/RC PR created with changelog/]
-        E --> F[Merge RC PR]
-        F --> G[/📦 Packages released/]
+        E --> F[/RC PR created/]
+        F --> G[Merge RC PR]
+        G --> H[/📦 Packages released/]
     end
 ```
 
 ### Development
 
-| # | Step | Example |
-|:-:|:-----|--------:|
-| 1 | Implement feature & make changes to your code | |
-| 2 | Open a PR to propose your changes | [PR #20](https://github.com/wevm/changelogs-rs/pull/20) |
-| → | Changelogs are auto-generated via AI | [Action](https://github.com/wevm/changelogs-rs/actions/runs/21611102210/job/62279809755) · [Generated](https://github.com/wevm/changelogs-rs/pull/20/files#diff-29deee10b009554f662a4a8a0579ad9c514f5458f91c61503fef5c49a50ee915) |
-| 3 | Merge the PR – changelogs get staged | [`.changelog/`](https://github.com/wevm/changelogs-rs/tree/2b98da3f2e2f89549e324f98145ce64cb68f287b/.changelog) |
+| # | Step | Description |
+|:-:|:-----|:------------|
+| 1 | Make changes & open PR | Implement your feature or fix |
+| 2 | Bot comments on PR | Links to add/edit changelog (AI pre-fills if enabled) |
+| 3 | Add changelog & merge | Changelog gets staged in `.changelog/` |
 
-### Release (Candidate)
+### Release
 
-| # | Step | Example |
-|:-:|:-----|--------:|
-| 1 | Push to main triggers the Release Candidate workflow | [Action](https://github.com/wevm/changelogs-rs/actions/runs/21611161512/job/62280000547) |
-| 2 | Workflow creates or updates a Release Candidate PR | [PR&nbsp;#21](https://github.com/wevm/changelogs-rs/pull/21) |
-| 3 | Merge the PR to release packages and publish the changelog | [`v0.4.0`&nbsp;release](https://github.com/wevm/changelogs-rs/releases/tag/changelogs%400.4.0) |
+| # | Step | Description |
+|:-:|:-----|:------------|
+| 1 | Push to main | Triggers release workflow |
+| 2 | RC PR created | Version bumps and changelog updates |
+| 3 | Merge RC PR | Packages published, GitHub releases created |
 
 ## Installation
 
@@ -72,13 +72,13 @@ flowchart LR
 curl -sSL https://changelogs.sh | sh
 ```
 
-Or download directly from [GitHub Releases](https://github.com/wevm/changelogs-rs/releases):
+Or download directly from [GitHub Releases](https://github.com/wevm/changelogs/releases):
 
 | Platform | Download |
 |----------|----------|
-| Linux (x86_64) | [changelogs-linux-amd64](https://github.com/wevm/changelogs-rs/releases/latest/download/changelogs-linux-amd64) |
-| macOS (Intel) | [changelogs-darwin-amd64](https://github.com/wevm/changelogs-rs/releases/latest/download/changelogs-darwin-amd64) |
-| macOS (Apple Silicon) | [changelogs-darwin-arm64](https://github.com/wevm/changelogs-rs/releases/latest/download/changelogs-darwin-arm64) |
+| Linux (x86_64) | [changelogs-linux-amd64](https://github.com/wevm/changelogs/releases/latest/download/changelogs-linux-amd64) |
+| macOS (Intel) | [changelogs-darwin-amd64](https://github.com/wevm/changelogs/releases/latest/download/changelogs-darwin-amd64) |
+| macOS (Apple Silicon) | [changelogs-darwin-arm64](https://github.com/wevm/changelogs/releases/latest/download/changelogs-darwin-arm64) |
 
 ## Commands
 
@@ -154,7 +154,9 @@ changelogs add --ai "claude -p"
 
 ## GitHub Actions
 
-### Auto-generate Changelogs on PRs
+### Check Changelogs on PRs
+
+Comments on PRs with changelog status. If no changelog exists and `ai` is provided, generates one and pre-fills the "Add changelog" link.
 
 ```yaml
 name: Changelog
@@ -173,7 +175,7 @@ jobs:
 
       - run: npm install -g @sourcegraph/amp
 
-      - uses: wevm/changelogs-rs/gen@master
+      - uses: wevm/changelogs/check@master
         with:
           ai: 'amp -x'
         env:
@@ -181,6 +183,8 @@ jobs:
 ```
 
 ### Create RC PR or Release
+
+Creates a release candidate PR when changelogs exist, or publishes packages when the RC PR is merged.
 
 ```yaml
 name: Release
@@ -194,7 +198,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: wevm/changelogs-rs@master
+      - uses: wevm/changelogs@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
