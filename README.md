@@ -41,9 +41,9 @@ flowchart LR
 
 1. Implement feature & **make changes** to your code
 2. **Open a PR** to propose your changes ([example](https://github.com/wevm/changelogs-rs/pull/20))
-   1. Changelogs are auto-generated via AI (if `wevm/changelogs-rs/gen` action set up)
+   1. Changelogs are auto-generated via AI ([example](https://github.com/wevm/changelogs-rs/pull/20/files#diff-29deee10b009554f662a4a8a0579ad9c514f5458f91c61503fef5c49a50ee915))
    2. Changelogs can be manually generated with `changelogs add`
-3. **Merge the PR** ([example](https://github.com/wevm/changelogs-rs/pull/20/files#diff-changelog))
+3. **Merge the PR**
    1. Changelogs are kept in the `.changelog/` directory
 
 ### Release (Candidate)
