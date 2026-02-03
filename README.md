@@ -5,6 +5,9 @@ A Rust rewrite of [changesets](https://github.com/changesets/changesets) for Car
 ## Quick Start
 
 ```bash
+# Install changelogs
+curl -sSL changelogs.sh | sh
+
 # Initialize changelogs in your workspace
 changelogs init
 
