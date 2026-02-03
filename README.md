@@ -1,8 +1,16 @@
-# changelogs
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/banner-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/banner-light.svg">
+    <img alt="changelogs" src=".github/banner-light.svg" width="100%">
+  </picture>
+</p>
 
-Changelog management for Rust, Python, and TypeScript¹ workspaces.
-
-_¹ TypeScript support is coming soon._
+<p align="center">
+  Changelog management for Rust, Python, and TypeScript¹ workspaces.
+  <br>
+  <sub>¹ TypeScript support is coming soon.</sub>
+</p>
 
 ## Quick Start
 
