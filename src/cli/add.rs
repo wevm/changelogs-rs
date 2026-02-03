@@ -259,6 +259,29 @@ fn run_ai_generation(
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
+        let combined = format!("{} {}", stderr, stdout).to_lowercase();
+
+        // Detect missing or invalid API key errors
+        if combined.contains("invalid api key")
+            || combined.contains("invalid_api_key")
+            || combined.contains("api key")
+            || combined.contains("unauthorized")
+            || combined.contains("authentication")
+            || combined.contains("401")
+        {
+            let hint = detect_api_key_hint(ai_command);
+            return Err(anyhow::anyhow!(
+                "AI command failed: API key is missing or invalid.\n\n{}\n\nOriginal error:\n{}{}",
+                hint,
+                stderr,
+                if stdout.is_empty() {
+                    String::new()
+                } else {
+                    format!("\n{}", stdout)
+                }
+            ));
+        }
+
         return Err(anyhow::anyhow!(
             "AI command failed (exit code {:?}):\nstderr: {}\nstdout: {}",
             output.status.code(),
@@ -307,4 +330,51 @@ fn run_ai_generation(
     println!("\nSummary:\n{}", cs.summary);
 
     Ok(())
+}
+
+/// Detects the AI provider from the command and returns a helpful hint about the required API key.
+fn detect_api_key_hint(ai_command: &str) -> String {
+    let cmd_lower = ai_command.to_lowercase();
+
+    if cmd_lower.contains("amp") {
+        return "Hint: The 'amp' command requires AMP_API_KEY to be set.\n\
+                In GitHub Actions, add this to your workflow:\n  \
+                env:\n    \
+                AMP_API_KEY: ${{ secrets.AMP_API_KEY }}\n\n\
+                Make sure the AMP_API_KEY secret is configured in your repository settings."
+            .to_string();
+    }
+
+    if cmd_lower.contains("claude") {
+        return "Hint: The 'claude' command requires ANTHROPIC_API_KEY to be set.\n\
+                In GitHub Actions, add this to your workflow:\n  \
+                env:\n    \
+                ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}\n\n\
+                Make sure the ANTHROPIC_API_KEY secret is configured in your repository settings."
+            .to_string();
+    }
+
+    if cmd_lower.contains("openai") {
+        return "Hint: The 'openai' command requires OPENAI_API_KEY to be set.\n\
+                In GitHub Actions, add this to your workflow:\n  \
+                env:\n    \
+                OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}\n\n\
+                Make sure the OPENAI_API_KEY secret is configured in your repository settings."
+            .to_string();
+    }
+
+    if cmd_lower.contains("gemini") {
+        return "Hint: The 'gemini' command requires GOOGLE_API_KEY to be set.\n\
+                In GitHub Actions, add this to your workflow:\n  \
+                env:\n    \
+                GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}\n\n\
+                Make sure the GOOGLE_API_KEY secret is configured in your repository settings."
+            .to_string();
+    }
+
+    // Generic hint for unknown providers
+    "Hint: Make sure the required API key environment variable is set.\n\
+     In GitHub Actions, ensure the secret is configured in repository settings\n\
+     and passed to the workflow step via the 'env' block."
+        .to_string()
 }
