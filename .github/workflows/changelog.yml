@@ -22,8 +22,8 @@ jobs:
       - name: Install Claude CLI
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Generate changelog if missing
-        uses: ./gen
+      - name: Check changelogs
+        uses: ./check
         with:
           ai: 'claude -p'
           conventional-commit: true
