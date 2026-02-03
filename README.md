@@ -184,6 +184,8 @@ jobs:
 
 ### Create RC PR or Release
 
+Creates a release candidate PR when changelogs exist, or publishes packages when the RC PR is merged.
+
 ```yaml
 name: Release
 
