@@ -96,8 +96,14 @@ runs:
           # URL encode the template
           ENCODED_TEMPLATE=$(python3 -c "import urllib.parse; import sys; print(urllib.parse.quote(sys.stdin.read()))" < <(echo "$TEMPLATE"))
           
-          # Generate a random ID for the new changelog file
-          CHANGELOG_ID=$(head -c 100 /dev/urandom | LC_ALL=C tr -dc 'a-z' | head -c 8)
+          # Generate a random ID in adjective-noun-verb format
+          ADJECTIVES=(brave calm dark eager fair gentle happy icy jolly keen lively merry nice odd proud quick rare shy tall unique vast warm young zesty bold cool dry easy fast good hot kind lazy mild neat old plain quiet rich safe tidy ugly vain weak aged big cute dull evil fine)
+          NOUNS=(lions bears wolves eagles hawks foxes deer owls cats dogs birds fish frogs bees ants mice rats bats crows doves ducks geese hens pigs cows goats sheep horses mules donkeys tigers pandas koalas seals whales sharks crabs clams snails slugs trees rocks waves winds clouds stars moons suns hills lakes)
+          VERBS=(dance sing jump run walk swim fly crawl climb slide roll spin twist shake wave bow nod wink smile laugh cry shout whisper hum buzz roar growl bark meow chirp play rest sleep wake eat drink cook bake read write draw paint build break fix clean wash dry fold pack)
+          ADJ=${ADJECTIVES[$RANDOM % ${#ADJECTIVES[@]}]}
+          NOUN=${NOUNS[$RANDOM % ${#NOUNS[@]}]}
+          VERB=${VERBS[$RANDOM % ${#VERBS[@]}]}
+          CHANGELOG_ID="${ADJ}-${NOUN}-${VERB}"
           NEW_FILE=".changelog/${CHANGELOG_ID}.md"
           ADD_URL="https://github.com/${REPO}/new/${HEAD_REF}?filename=${NEW_FILE}&value=${ENCODED_TEMPLATE}"
           
