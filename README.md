@@ -154,7 +154,9 @@ changelogs add --ai "claude -p"
 
 ## GitHub Actions
 
-### Auto-generate Changelogs on PRs
+### Check Changelogs on PRs
+
+Comments on PRs with changelog status. If no changelog exists and `ai` is provided, generates one and pre-fills the "Add changelog" link.
 
 ```yaml
 name: Changelog
@@ -173,7 +175,7 @@ jobs:
 
       - run: npm install -g @sourcegraph/amp
 
-      - uses: wevm/changelogs-rs/gen@master
+      - uses: wevm/changelogs-rs/check@master
         with:
           ai: 'amp -x'
         env:
