@@ -34,7 +34,7 @@ changelogs version
 ## Workflows
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph Development
         A[Make Changes] --> B[Open PR]
         B --> C{AI generates<br/>changelog}
