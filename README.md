@@ -35,7 +35,16 @@ changelogs version
 
 ```mermaid
 flowchart LR
-    A[Make Changes] --> B[Open PR] --> C{AI changelog} --> D[Merge PR] --> E[RC PR] --> F[Merge] --> G[📦 Released]
+    subgraph Development
+        A[Make Changes] --> B[Open PR]
+        B --> C{AI generates<br/>changelog}
+        C --> D[Merge PR]
+    end
+    subgraph Release
+        D --> E[/RC PR created with changelog/]
+        E --> F[Merge RC PR]
+        F --> G[/📦 Packages released/]
+    end
 ```
 
 ### Development
