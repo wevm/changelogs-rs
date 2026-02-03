@@ -163,7 +163,9 @@ impl EcosystemAdapter for PythonAdapter {
             return Ok(PublishResult::Success);
         }
 
-        if std::env::var("TWINE_PASSWORD").is_err() && std::env::var("TWINE_USERNAME").is_err() {
+        let has_password = std::env::var("TWINE_PASSWORD").map(|v| !v.is_empty()).unwrap_or(false);
+        let has_username = std::env::var("TWINE_USERNAME").map(|v| !v.is_empty()).unwrap_or(false);
+        if !has_password && !has_username {
             return Ok(PublishResult::Skipped);
         }
 
