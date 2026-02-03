@@ -1,5 +1,11 @@
 # Changelog
 
+## `changelogs@0.4.2`
+
+### Patch Changes
+
+- Fixed release mode to run without requiring registry tokens, allowing tag creation and GitHub releases for all projects. (by @BrendanRyan, [#27](https://github.com/wevm/changelogs/pull/27))
+
 ## `changelogs@0.4.1`
 
 ### Patch Changes
