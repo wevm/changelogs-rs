@@ -1,5 +1,11 @@
 # Changelog
 
+## `changelogs@0.5.1`
+
+### Patch Changes
+
+- Fixed token validation to check for empty strings instead of just missing environment variables. (by @jxom, [#31](https://github.com/wevm/changelogs/pull/31))
+
 ## `changelogs@0.5.0`
 
 ### Minor Changes
