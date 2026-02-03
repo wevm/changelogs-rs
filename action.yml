@@ -207,12 +207,12 @@ runs:
         fi
 
     - name: Push git tags
-      if: steps.check.outputs.hasChangelogs == 'false' && steps.publish.outputs.published == 'true'
+      if: steps.check.outputs.hasChangelogs == 'false'
       shell: bash
       run: git push --follow-tags
 
     - name: Create GitHub releases
-      if: steps.check.outputs.hasChangelogs == 'false' && steps.publish.outputs.published == 'true'
+      if: steps.check.outputs.hasChangelogs == 'false'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
