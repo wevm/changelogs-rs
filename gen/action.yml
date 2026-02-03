@@ -10,6 +10,9 @@ inputs:
     description: 'Base ref to compare against'
     required: false
     default: ${{ github.base_ref }}
+  ecosystem:
+    description: 'Package ecosystem (rust, python). If not set, auto-detected.'
+    required: false
   message:
     description: 'Commit message for the changelog (overrides conventional-commit)'
     required: false
@@ -66,6 +69,9 @@ runs:
       shell: bash
       run: |
         ARGS="--ai \"${{ inputs.ai }}\" --ref origin/${{ inputs.ref }}"
+        if [ -n "${{ inputs.ecosystem }}" ]; then
+          ARGS="$ARGS --ecosystem \"${{ inputs.ecosystem }}\""
+        fi
         if [ -n "${{ inputs.instructions }}" ]; then
           ARGS="$ARGS --instructions \"${{ inputs.instructions }}\""
         fi
