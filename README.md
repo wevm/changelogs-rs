@@ -61,7 +61,7 @@ flowchart LR
 |---------|-------------|
 | `init` | Initialize `.changelog/` directory |
 | `add` | Create a new changelog interactively |
-| `add --ai "claude -p"` | Generate changelog using AI |
+| `add --ai "<command>"` | Generate changelog using AI (see [Supported AI Providers](#supported-ai-providers)) |
 | `status` | Show pending changelogs and releases |
 | `version` | Apply version bumps and update changelogs |
 | `publish` | Publish unpublished packages to crates.io |
@@ -102,6 +102,29 @@ other-crate: patch
 Added new feature X that does Y.
 
 Fixed bug Z in the parser.
+```
+
+## Supported AI Providers
+
+The `--ai` flag and GitHub Action `ai` input accept any CLI command that reads from stdin and outputs text. The diff is piped to the command, and the output becomes the changelog entry.
+
+| Provider | Command | Required Secret | Install |
+|----------|---------|-----------------|---------|
+| Amp | `amp -x` | `AMP_API_KEY` | `npm install -g @sourcegraph/amp` |
+| Claude Code | `claude -p` | `ANTHROPIC_API_KEY` | `npm install -g @anthropic-ai/claude-code` |
+| OpenAI | `openai api chat.completions.create -m gpt-4o` | `OPENAI_API_KEY` | `pip install openai` |
+| Gemini | `gemini` | `GOOGLE_API_KEY` | `npm install -g @anthropic-ai/gemini-cli` |
+
+
+### Examples
+
+```bash
+# Using Amp
+changelogs add --ai "amp -x"
+
+# Using Claude
+changelogs add --ai "claude -p"
+
 ```
 
 ## GitHub Actions
