@@ -1,8 +1,9 @@
 name: Binary Releases
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'changelogs@*'
   workflow_dispatch:
     inputs:
       tag:
