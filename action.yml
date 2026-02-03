@@ -170,9 +170,9 @@ runs:
         commit-message: ${{ inputs.commit || steps.version.outputs.commit-msg }}
         delete-branch: true
 
-    # Publish mode: Publish when no changelogs (PR was just merged) and a registry token is provided
+    # Release mode: Push tags and create releases when no changelogs (PR was just merged)
     - name: Setup Git user for tags
-      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '')
+      if: steps.check.outputs.hasChangelogs == 'false'
       shell: bash
       run: |
         git config user.name "github-actions[bot]"
@@ -206,12 +206,12 @@ runs:
         fi
 
     - name: Push git tags
-      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '') && steps.publish.outputs.published == 'true'
+      if: steps.check.outputs.hasChangelogs == 'false'
       shell: bash
       run: git push --follow-tags
 
     - name: Create GitHub releases
-      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '') && steps.publish.outputs.published == 'true'
+      if: steps.check.outputs.hasChangelogs == 'false'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
