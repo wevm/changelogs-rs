@@ -129,8 +129,9 @@ impl EcosystemAdapter for RustAdapter {
             return Ok(PublishResult::Success);
         }
 
-        if std::env::var("CARGO_REGISTRY_TOKEN").is_err() {
-            return Ok(PublishResult::Skipped);
+        match std::env::var("CARGO_REGISTRY_TOKEN") {
+            Ok(token) if !token.is_empty() => {}
+            _ => return Ok(PublishResult::Skipped),
         }
 
         let mut cmd = Command::new("cargo");
