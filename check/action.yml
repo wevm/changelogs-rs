@@ -95,7 +95,7 @@ runs:
           ENCODED_TEMPLATE=$(python3 -c "import urllib.parse; import sys; print(urllib.parse.quote(sys.stdin.read()))" < <(echo "$TEMPLATE"))
           
           # Generate a random ID for the new changelog file
-          CHANGELOG_ID=$(cat /dev/urandom | LC_ALL=C tr -dc 'a-z' | fold -w 8 | head -n 1)
+          CHANGELOG_ID=$(head -c 100 /dev/urandom | LC_ALL=C tr -dc 'a-z' | head -c 8)
           NEW_FILE=".changelog/${CHANGELOG_ID}.md"
           ADD_URL="https://github.com/${REPO}/new/${HEAD_REF}?filename=${NEW_FILE}&value=${ENCODED_TEMPLATE}"
           
