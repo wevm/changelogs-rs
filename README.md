@@ -52,17 +52,17 @@ flowchart LR
 | # | Step | Example |
 |:-:|:-----|--------:|
 | 1 | Implement feature & make changes to your code | |
-| 2 | Open a PR to propose your changes | [PR #20](https://github.com/wevm/changelogs-rs/pull/20) |
-| → | Changelogs are auto-generated via AI | [Action](https://github.com/wevm/changelogs-rs/actions/runs/21611102210/job/62279809755) · [Generated](https://github.com/wevm/changelogs-rs/pull/20/files#diff-29deee10b009554f662a4a8a0579ad9c514f5458f91c61503fef5c49a50ee915) |
-| 3 | Merge the PR – changelogs get staged | [`.changelog/`](https://github.com/wevm/changelogs-rs/tree/2b98da3f2e2f89549e324f98145ce64cb68f287b/.changelog) |
+| 2 | Open a PR to propose your changes | [PR #20](https://github.com/wevm/changelogs/pull/20) |
+| → | Changelogs are auto-generated via AI | [Action](https://github.com/wevm/changelogs/actions/runs/21611102210/job/62279809755) · [Generated](https://github.com/wevm/changelogs/pull/20/files#diff-29deee10b009554f662a4a8a0579ad9c514f5458f91c61503fef5c49a50ee915) |
+| 3 | Merge the PR – changelogs get staged | [`.changelog/`](https://github.com/wevm/changelogs/tree/2b98da3f2e2f89549e324f98145ce64cb68f287b/.changelog) |
 
 ### Release (Candidate)
 
 | # | Step | Example |
 |:-:|:-----|--------:|
-| 1 | Push to main triggers the Release Candidate workflow | [Action](https://github.com/wevm/changelogs-rs/actions/runs/21611161512/job/62280000547) |
-| 2 | Workflow creates or updates a Release Candidate PR | [PR&nbsp;#21](https://github.com/wevm/changelogs-rs/pull/21) |
-| 3 | Merge the PR to release packages and publish the changelog | [`v0.4.0`&nbsp;release](https://github.com/wevm/changelogs-rs/releases/tag/changelogs%400.4.0) |
+| 1 | Push to main triggers the Release Candidate workflow | [Action](https://github.com/wevm/changelogs/actions/runs/21611161512/job/62280000547) |
+| 2 | Workflow creates or updates a Release Candidate PR | [PR&nbsp;#21](https://github.com/wevm/changelogs/pull/21) |
+| 3 | Merge the PR to release packages and publish the changelog | [`v0.4.0`&nbsp;release](https://github.com/wevm/changelogs/releases/tag/changelogs%400.4.0) |
 
 ## Installation
 
@@ -72,13 +72,13 @@ flowchart LR
 curl -sSL https://changelogs.sh | sh
 ```
 
-Or download directly from [GitHub Releases](https://github.com/wevm/changelogs-rs/releases):
+Or download directly from [GitHub Releases](https://github.com/wevm/changelogs/releases):
 
 | Platform | Download |
 |----------|----------|
-| Linux (x86_64) | [changelogs-linux-amd64](https://github.com/wevm/changelogs-rs/releases/latest/download/changelogs-linux-amd64) |
-| macOS (Intel) | [changelogs-darwin-amd64](https://github.com/wevm/changelogs-rs/releases/latest/download/changelogs-darwin-amd64) |
-| macOS (Apple Silicon) | [changelogs-darwin-arm64](https://github.com/wevm/changelogs-rs/releases/latest/download/changelogs-darwin-arm64) |
+| Linux (x86_64) | [changelogs-linux-amd64](https://github.com/wevm/changelogs/releases/latest/download/changelogs-linux-amd64) |
+| macOS (Intel) | [changelogs-darwin-amd64](https://github.com/wevm/changelogs/releases/latest/download/changelogs-darwin-amd64) |
+| macOS (Apple Silicon) | [changelogs-darwin-arm64](https://github.com/wevm/changelogs/releases/latest/download/changelogs-darwin-arm64) |
 
 ## Commands
 
@@ -175,7 +175,7 @@ jobs:
 
       - run: npm install -g @sourcegraph/amp
 
-      - uses: wevm/changelogs-rs/check@master
+      - uses: wevm/changelogs/check@master
         with:
           ai: 'amp -x'
         env:
@@ -198,7 +198,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: wevm/changelogs-rs@master
+      - uses: wevm/changelogs@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
