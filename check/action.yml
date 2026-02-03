@@ -83,12 +83,14 @@ runs:
           # No changelog - build template
           if [ "${{ steps.ai.outputs.generated }}" = "true" ]; then
             TEMPLATE=$(cat /tmp/ai_changelog.md)
+            AI_GENERATED=true
           else
             TEMPLATE="---
         <package-name>: patch
         ---
 
         Brief description of changes."
+            AI_GENERATED=false
           fi
           
           # URL encode the template
@@ -99,9 +101,28 @@ runs:
           NEW_FILE=".changelog/${CHANGELOG_ID}.md"
           ADD_URL="https://github.com/${REPO}/new/${HEAD_REF}?filename=${NEW_FILE}&value=${ENCODED_TEMPLATE}"
           
-          BODY="### ⚠️ Changelog not found.
+          if [ "$AI_GENERATED" = "true" ]; then
+            BODY="### ⚠️ Changelog not found.
 
-        [Add changelog](${ADD_URL})"
+        A changelog entry is required before merging. We've generated a suggested changelog based on your changes:
+
+        <details>
+        <summary>Preview</summary>
+
+        \`\`\`markdown
+        ${TEMPLATE}
+        \`\`\`
+
+        </details>
+
+        **[Add changelog](${ADD_URL})** to commit this to your branch."
+          else
+            BODY="### ⚠️ Changelog not found.
+
+        A changelog entry is required before merging.
+
+        **[Add changelog](${ADD_URL})**"
+          fi
         fi
         
         # Write to file for multiline support
