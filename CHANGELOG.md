@@ -1,5 +1,12 @@
 # Changelog
 
+## `changelogs@0.4.1`
+
+### Patch Changes
+
+- Fixed release notes formatting by adding blank line before GitHub extras section. (by @jxom, [#24](https://github.com/wevm/changelogs-rs/pull/24))
+- Fixed error message when ecosystem is not detected to provide clear instructions with the --ecosystem flag, and added -e shorthand for the ecosystem argument. (by @jxom, [#24](https://github.com/wevm/changelogs-rs/pull/24))
+
 ## `changelogs@0.4.0`
 
 ### Minor Changes
