@@ -189,7 +189,12 @@ pub fn write_changelogs(
         ChangelogFormat::PerCrate => {
             for release in releases {
                 if let Some(package) = workspace.get_package(&release.name) {
-                    let entry = generate_entry(release, changelogs, changelog_dir);
+                    let mut entry = format!("## `{}@{}`\n\n", release.name, release.new_version);
+                    let generated = generate_entry(release, changelogs, changelog_dir);
+                    let entry_body = generated.lines().skip(2).collect::<Vec<_>>().join("\n");
+                    entry.push_str(&entry_body);
+                    entry.push('\n');
+
                     let changelog_path = package.path.join("CHANGELOG.md");
                     update_changelog(&changelog_path, &entry)?;
                 }
@@ -199,15 +204,8 @@ pub fn write_changelogs(
             let mut combined_entry = String::new();
 
             for release in releases {
-                combined_entry.push_str(&format!(
-                    "## `{}@{}`\n\n",
-                    release.name, release.new_version
-                ));
-
                 let entry = generate_entry(release, changelogs, changelog_dir);
-                let entry_body = entry.lines().skip(2).collect::<Vec<_>>().join("\n");
-                combined_entry.push_str(&entry_body);
-                combined_entry.push('\n');
+                combined_entry.push_str(&entry);
             }
 
             let changelog_path = workspace.root.join("CHANGELOG.md");
