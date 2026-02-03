@@ -61,8 +61,8 @@ flowchart LR
 | # | Step | Example |
 |:-:|:-----|--------:|
 | 1 | Push to main triggers the Release Candidate workflow | [Action](https://github.com/wevm/changelogs-rs/actions/runs/21611161512/job/62280000547) |
-| 2 | Workflow creates or updates a Release Candidate PR with version bumps and changelog | [PR #21](https://github.com/wevm/changelogs-rs/pull/21) |
-| 3 | Merge the PR to release packages and publish the changelog | [`v0.4.0` release](https://github.com/wevm/changelogs-rs/releases/tag/changelogs%400.4.0) |
+| 2 | Workflow creates or updates a Release Candidate PR | [PR&nbsp;#21](https://github.com/wevm/changelogs-rs/pull/21) |
+| 3 | Merge the PR to release packages and publish the changelog | [`v0.4.0`&nbsp;release](https://github.com/wevm/changelogs-rs/releases/tag/changelogs%400.4.0) |
 
 ## Installation
 
