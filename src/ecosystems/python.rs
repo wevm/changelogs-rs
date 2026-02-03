@@ -1,4 +1,4 @@
-use crate::ecosystems::{Ecosystem, EcosystemAdapter, Package};
+use crate::ecosystems::{Ecosystem, EcosystemAdapter, Package, PublishResult};
 use crate::error::{Error, Result};
 use semver::Version;
 use std::collections::HashMap;
@@ -158,9 +158,13 @@ impl EcosystemAdapter for PythonAdapter {
         Ok(false)
     }
 
-    fn publish(pkg: &Package, dry_run: bool, registry: Option<&str>) -> Result<bool> {
+    fn publish(pkg: &Package, dry_run: bool, registry: Option<&str>) -> Result<PublishResult> {
         if dry_run {
-            return Ok(true);
+            return Ok(PublishResult::Success);
+        }
+
+        if std::env::var("TWINE_PASSWORD").is_err() && std::env::var("TWINE_USERNAME").is_err() {
+            return Ok(PublishResult::Skipped);
         }
 
         let pkg_path = pkg.path.canonicalize().map_err(|e| {
@@ -234,12 +238,12 @@ impl EcosystemAdapter for PythonAdapter {
         let upload_output = cmd.output()?;
 
         if upload_output.status.success() {
-            return Ok(true);
+            return Ok(PublishResult::Success);
         }
 
         let stderr = String::from_utf8_lossy(&upload_output.stderr);
         if stderr.contains("already exists") || stderr.contains("File already exists") {
-            return Ok(true);
+            return Ok(PublishResult::Success);
         }
 
         Err(Error::PublishFailed(format!(

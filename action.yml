@@ -170,7 +170,8 @@ runs:
         commit-message: ${{ inputs.commit || steps.version.outputs.commit-msg }}
         delete-branch: true
 
-    # Release mode: Push tags and create releases when no changelogs (PR was just merged)
+    # Publish mode: Publish when no changelogs (PR was just merged)
+    # Will publish to registry if tokens provided, otherwise just creates git tags
     - name: Setup Git user for tags
       if: steps.check.outputs.hasChangelogs == 'false'
       shell: bash
@@ -179,7 +180,7 @@ runs:
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
     - name: Publish packages
-      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '')
+      if: steps.check.outputs.hasChangelogs == 'false'
       id: publish
       shell: bash
       env:
@@ -194,8 +195,8 @@ runs:
         output=$(changelogs $ECOSYSTEM_FLAG publish 2>&1) || true
         echo "$output"
         
-        # Parse published packages from output
-        packages=$(echo "$output" | { grep -E "^\s+\S+\s+v[0-9]" || true; } | { grep "✓" || true; } | awk '{print $1}' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+        # Parse published packages from output (✓ = published, ⊘ = skipped/tags-only)
+        packages=$(echo "$output" | { grep -E "^\s+\S+\s+v[0-9]" || true; } | { grep -E "✓|⊘" || true; } | awk '{print $1}' | jq -R -s -c 'split("\n") | map(select(length > 0))')
         
         if [ "$packages" != "[]" ] && [ -n "$packages" ]; then
           echo "published=true" >> $GITHUB_OUTPUT

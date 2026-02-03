@@ -1,4 +1,4 @@
-use crate::ecosystems::{Ecosystem, EcosystemAdapter, Package};
+use crate::ecosystems::{Ecosystem, EcosystemAdapter, Package, PublishResult};
 use crate::error::Result;
 use cargo_metadata::MetadataCommand;
 use semver::Version;
@@ -124,9 +124,13 @@ impl EcosystemAdapter for RustAdapter {
         Ok(is_published_with_same_version)
     }
 
-    fn publish(pkg: &Package, dry_run: bool, registry: Option<&str>) -> Result<bool> {
+    fn publish(pkg: &Package, dry_run: bool, registry: Option<&str>) -> Result<PublishResult> {
         if dry_run {
-            return Ok(true);
+            return Ok(PublishResult::Success);
+        }
+
+        if std::env::var("CARGO_REGISTRY_TOKEN").is_err() {
+            return Ok(PublishResult::Skipped);
         }
 
         let mut cmd = Command::new("cargo");
@@ -143,12 +147,12 @@ impl EcosystemAdapter for RustAdapter {
         let output = cmd.output()?;
 
         if output.status.success() {
-            return Ok(true);
+            return Ok(PublishResult::Success);
         }
 
         let stderr = String::from_utf8_lossy(&output.stderr);
         if stderr.contains("already uploaded") || stderr.contains("already exists") {
-            return Ok(true);
+            return Ok(PublishResult::Success);
         }
 
         Err(crate::error::Error::PublishFailed(format!(

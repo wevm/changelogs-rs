@@ -1,5 +1,5 @@
 use anyhow::Result;
-use changelogs::{Config, Ecosystem, Package, Workspace};
+use changelogs::{Config, Ecosystem, Package, PublishResult, Workspace};
 use std::process::Command;
 
 pub fn run_with_ecosystem(
@@ -20,13 +20,14 @@ pub fn run_with_ecosystem(
     println!("🚀 Publishing {} package(s)...\n", packages.len());
 
     let mut published: Vec<&Package> = Vec::new();
+    let mut skipped: Vec<&Package> = Vec::new();
     let mut failed: Vec<&Package> = Vec::new();
 
     for pkg in packages {
         print!("  {} v{} ... ", pkg.name, pkg.version);
 
         match workspace.publish_package(pkg, dry_run, tag.as_deref()) {
-            Ok(true) => {
+            Ok(PublishResult::Success) => {
                 if dry_run {
                     println!("(dry-run)");
                 } else {
@@ -34,7 +35,11 @@ pub fn run_with_ecosystem(
                 }
                 published.push(pkg);
             }
-            Ok(false) => {
+            Ok(PublishResult::Skipped) => {
+                println!("⊘ (no token)");
+                skipped.push(pkg);
+            }
+            Ok(PublishResult::Failed) => {
                 println!("✗");
                 failed.push(pkg);
             }
@@ -48,8 +53,11 @@ pub fn run_with_ecosystem(
 
     println!();
 
-    if !published.is_empty() && !dry_run {
-        create_git_tags(&workspace, &published)?;
+    if !dry_run {
+        let taggable: Vec<&Package> = published.iter().chain(skipped.iter()).copied().collect();
+        if !taggable.is_empty() {
+            create_git_tags(&workspace, &taggable)?;
+        }
     }
 
     if !failed.is_empty() {
@@ -60,6 +68,11 @@ pub fn run_with_ecosystem(
         println!(
             "Dry run complete. {} package(s) would be published.",
             published.len()
+        );
+    } else if !skipped.is_empty() && published.is_empty() {
+        println!(
+            "No packages published (no token), but {} git tag(s) created",
+            skipped.len()
         );
     } else {
         println!("Successfully published {} package(s)", published.len());

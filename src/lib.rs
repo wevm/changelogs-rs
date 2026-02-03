@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 pub use changelog_entry::{Changelog, Release};
 pub use config::Config;
-pub use ecosystems::{Ecosystem, Package};
+pub use ecosystems::{Ecosystem, Package, PublishResult};
 pub use plan::{PackageRelease, ReleasePlan};
 pub use workspace::Workspace;
 

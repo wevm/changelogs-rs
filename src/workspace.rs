@@ -1,4 +1,4 @@
-use crate::ecosystems::{self, Ecosystem, Package};
+use crate::ecosystems::{self, Ecosystem, Package, PublishResult};
 use crate::error::{Error, Result};
 use semver::Version;
 use std::collections::HashMap;
@@ -146,7 +146,7 @@ impl Workspace {
         pkg: &Package,
         dry_run: bool,
         registry: Option<&str>,
-    ) -> Result<bool> {
+    ) -> Result<PublishResult> {
         ecosystems::publish(self.ecosystem, pkg, dry_run, registry)
     }
 
