@@ -54,11 +54,7 @@ pub fn run_with_ecosystem(
     println!();
 
     if !dry_run {
-        let taggable: Vec<&Package> = published
-            .iter()
-            .chain(skipped.iter())
-            .copied()
-            .collect();
+        let taggable: Vec<&Package> = published.iter().chain(skipped.iter()).copied().collect();
         if !taggable.is_empty() {
             create_git_tags(&workspace, &taggable)?;
         }
