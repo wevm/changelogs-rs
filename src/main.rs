@@ -10,7 +10,7 @@ mod cli;
 #[command(version)]
 struct Cli {
     /// Ecosystem to use (rust, python). Auto-detected if not specified.
-    #[arg(long, global = true)]
+    #[arg(short = 'e', long, global = true)]
     ecosystem: Option<Ecosystem>,
 
     #[command(subcommand)]
