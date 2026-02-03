@@ -1,8 +1,10 @@
 mod python;
 mod rust;
+mod typescript;
 
 pub use python::PythonAdapter;
 pub use rust::RustAdapter;
+pub use typescript::TypeScriptAdapter;
 
 use crate::error::Result;
 use semver::Version;
@@ -16,11 +18,13 @@ pub enum Ecosystem {
     #[default]
     Rust,
     Python,
+    TypeScript,
 }
 
 impl Ecosystem {
     const RUST_ALIASES: &[&str] = &["rust", "cargo"];
     const PYTHON_ALIASES: &[&str] = &["python", "pypi"];
+    const TYPESCRIPT_ALIASES: &[&str] = &["typescript", "npm", "pnpm", "yarn", "bun", "node"];
 
     pub fn from_alias(s: &str) -> Option<Self> {
         let lower = s.to_lowercase();
@@ -28,6 +32,8 @@ impl Ecosystem {
             Some(Ecosystem::Rust)
         } else if Self::PYTHON_ALIASES.contains(&lower.as_str()) {
             Some(Ecosystem::Python)
+        } else if Self::TYPESCRIPT_ALIASES.contains(&lower.as_str()) {
+            Some(Ecosystem::TypeScript)
         } else {
             None
         }
@@ -39,6 +45,7 @@ impl std::fmt::Display for Ecosystem {
         match self {
             Ecosystem::Rust => write!(f, "rust"),
             Ecosystem::Python => write!(f, "python"),
+            Ecosystem::TypeScript => write!(f, "typescript"),
         }
     }
 }
@@ -123,6 +130,9 @@ pub fn detect_ecosystem(start: &Path) -> Option<Ecosystem> {
         if current.join("pyproject.toml").exists() {
             return Some(Ecosystem::Python);
         }
+        if current.join("package.json").exists() {
+            return Some(Ecosystem::TypeScript);
+        }
 
         match current.parent() {
             Some(parent) => current = parent.to_path_buf(),
@@ -135,6 +145,7 @@ pub fn discover_packages(ecosystem: Ecosystem, root: &Path) -> Result<Vec<Packag
     match ecosystem {
         Ecosystem::Rust => RustAdapter::discover(root),
         Ecosystem::Python => PythonAdapter::discover(root),
+        Ecosystem::TypeScript => TypeScriptAdapter::discover(root),
     }
 }
 
@@ -142,6 +153,7 @@ pub fn read_version(ecosystem: Ecosystem, manifest_path: &Path) -> Result<Versio
     match ecosystem {
         Ecosystem::Rust => RustAdapter::read_version(manifest_path),
         Ecosystem::Python => PythonAdapter::read_version(manifest_path),
+        Ecosystem::TypeScript => TypeScriptAdapter::read_version(manifest_path),
     }
 }
 
@@ -149,6 +161,7 @@ pub fn write_version(ecosystem: Ecosystem, manifest_path: &Path, version: &Versi
     match ecosystem {
         Ecosystem::Rust => RustAdapter::write_version(manifest_path, version),
         Ecosystem::Python => PythonAdapter::write_version(manifest_path, version),
+        Ecosystem::TypeScript => TypeScriptAdapter::write_version(manifest_path, version),
     }
 }
 
@@ -161,6 +174,9 @@ pub fn update_dependency_versions(
     match ecosystem {
         Ecosystem::Rust => RustAdapter::update_all_dependency_versions(packages, root, updates),
         Ecosystem::Python => PythonAdapter::update_all_dependency_versions(packages, root, updates),
+        Ecosystem::TypeScript => {
+            TypeScriptAdapter::update_all_dependency_versions(packages, root, updates)
+        }
     }
 }
 
@@ -168,6 +184,7 @@ pub fn is_published(ecosystem: Ecosystem, name: &str, version: &Version) -> Resu
     match ecosystem {
         Ecosystem::Rust => RustAdapter::is_published(name, version),
         Ecosystem::Python => PythonAdapter::is_published(name, version),
+        Ecosystem::TypeScript => TypeScriptAdapter::is_published(name, version),
     }
 }
 
@@ -180,6 +197,7 @@ pub fn publish(
     match ecosystem {
         Ecosystem::Rust => RustAdapter::publish(pkg, dry_run, registry),
         Ecosystem::Python => PythonAdapter::publish(pkg, dry_run, registry),
+        Ecosystem::TypeScript => TypeScriptAdapter::publish(pkg, dry_run, registry),
     }
 }
 
@@ -187,5 +205,6 @@ pub fn tag_name(ecosystem: Ecosystem, pkg: &Package) -> String {
     match ecosystem {
         Ecosystem::Rust => RustAdapter::tag_name(pkg),
         Ecosystem::Python => PythonAdapter::tag_name(pkg),
+        Ecosystem::TypeScript => TypeScriptAdapter::tag_name(pkg),
     }
 }

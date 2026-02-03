@@ -7,9 +7,7 @@
 </p>
 
 <p align="center">
-  Changelog management for Rust, Python, and TypeScript¹ workspaces.
-  <br>
-  <sub>¹ TypeScript support is coming soon.</sub>
+  Changelog management for Rust, Python, and TypeScript workspaces.
 </p>
 
 ## Quick Start
@@ -190,6 +188,7 @@ jobs:
 | `conventional-commit` | Use conventional commit format | `false` |
 | `crate-token` | Crates.io API token for publishing (Rust) | - |
 | `pypi-token` | PyPI API token for publishing (Python) | - |
+| `npm-token` | npm auth token for publishing (TypeScript) | - |
 
 ### Action Outputs
 
@@ -215,6 +214,27 @@ Changelogs supports Python packages using PEP 621 `pyproject.toml` files.
 **Limitations:**
 - Single-package repos only (no Python monorepo support)
 - PEP 621 only (no `setup.py` or `setup.cfg`)
+
+### TypeScript
+
+Changelogs supports TypeScript/JavaScript packages using npm, pnpm, yarn, or bun workspaces.
+
+**Workspace formats:**
+- **npm/yarn/bun**: `workspaces` field in root `package.json`
+- **pnpm**: `pnpm-workspace.yaml` file
+
+**Requirements:**
+- `package.json` with `name` and `version` fields
+- Semantic versioning
+- Package manager installed (npm, pnpm, yarn, or bun)
+
+**Example GitHub Action:**
+```yaml
+- uses: wevm/changelogs-rs@master
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    npm-token: ${{ secrets.NPM_TOKEN }}
+```
 
 ## License
 
