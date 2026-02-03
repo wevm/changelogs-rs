@@ -1,5 +1,11 @@
 # Changelog
 
+## `changelogs@0.5.0`
+
+### Minor Changes
+
+- Added support for creating git tags without registry tokens, allowing the tool to be used for version management even when package publishing is not configured. (by @jxom, [#29](https://github.com/wevm/changelogs/pull/29))
+
 ## `changelogs@0.4.2`
 
 ### Patch Changes
