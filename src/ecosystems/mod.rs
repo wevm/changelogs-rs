@@ -34,6 +34,17 @@ impl Ecosystem {
     }
 }
 
+/// Result of attempting to publish a package
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PublishResult {
+    /// Package was successfully published
+    Success,
+    /// Publishing was skipped (e.g., no token configured)
+    Skipped,
+    /// Publishing failed
+    Failed,
+}
+
 impl std::fmt::Display for Ecosystem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -99,8 +110,8 @@ pub trait EcosystemAdapter {
     where
         Self: Sized;
 
-    /// Publishes a package to the registry. Returns true on success.
-    fn publish(pkg: &Package, dry_run: bool, registry: Option<&str>) -> Result<bool>
+    /// Publishes a package to the registry.
+    fn publish(pkg: &Package, dry_run: bool, registry: Option<&str>) -> Result<PublishResult>
     where
         Self: Sized;
 
@@ -176,7 +187,7 @@ pub fn publish(
     pkg: &Package,
     dry_run: bool,
     registry: Option<&str>,
-) -> Result<bool> {
+) -> Result<PublishResult> {
     match ecosystem {
         Ecosystem::Rust => RustAdapter::publish(pkg, dry_run, registry),
         Ecosystem::Python => PythonAdapter::publish(pkg, dry_run, registry),
