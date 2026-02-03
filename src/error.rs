@@ -49,6 +49,15 @@ pub enum Error {
     #[error("failed to check PyPI: {0}")]
     PypiCheckFailed(String),
 
+    #[error("TypeScript project not found: {0}")]
+    TypeScriptProjectNotFound(String),
+
+    #[error("failed to check npm registry: {0}")]
+    NpmCheckFailed(String),
+
+    #[error("invalid package.json: {0}")]
+    InvalidPackageJson(String),
+
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
 

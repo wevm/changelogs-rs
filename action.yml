@@ -8,13 +8,16 @@ branding:
 
 inputs:
   ecosystem:
-    description: 'Ecosystem to use (rust, python). Auto-detected if not specified.'
+    description: 'Ecosystem to use (rust, python, typescript). Auto-detected if not specified.'
     required: false
   crate-token:
     description: 'Crates.io API token for publishing (Rust)'
     required: false
   pypi-token:
     description: 'PyPI API token for publishing (Python)'
+    required: false
+  npm-token:
+    description: 'npm auth token for publishing (TypeScript)'
     required: false
   commit:
     description: 'Commit message for version bump (overrides conventional-commit)'
@@ -172,20 +175,26 @@ runs:
 
     # Publish mode: Publish when no changelogs (PR was just merged) and a registry token is provided
     - name: Setup Git user for tags
-      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '')
+      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '' || inputs.npm-token != '')
       shell: bash
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+    - name: Setup npm auth (for TypeScript ecosystem)
+      if: steps.check.outputs.hasChangelogs == 'false' && inputs.npm-token != ''
+      shell: bash
+      run: echo "//registry.npmjs.org/:_authToken=${{ inputs.npm-token }}" >> ~/.npmrc
+
     - name: Publish packages
-      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '')
+      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '' || inputs.npm-token != '')
       id: publish
       shell: bash
       env:
         CARGO_REGISTRY_TOKEN: ${{ inputs.crate-token }}
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ inputs.pypi-token }}
+        NPM_TOKEN: ${{ inputs.npm-token }}
       run: |
         ECOSYSTEM_FLAG=""
         if [ -n "${{ inputs.ecosystem }}" ]; then
@@ -206,12 +215,12 @@ runs:
         fi
 
     - name: Push git tags
-      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '') && steps.publish.outputs.published == 'true'
+      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '' || inputs.npm-token != '') && steps.publish.outputs.published == 'true'
       shell: bash
       run: git push --follow-tags
 
     - name: Create GitHub releases
-      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '') && steps.publish.outputs.published == 'true'
+      if: steps.check.outputs.hasChangelogs == 'false' && (inputs.crate-token != '' || inputs.pypi-token != '' || inputs.npm-token != '') && steps.publish.outputs.published == 'true'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
