@@ -1,5 +1,11 @@
 # Changelog
 
+## `changelogs@0.5.2`
+
+### Patch Changes
+
+- Fixed per-crate changelog format to include package and version header in individual CHANGELOG.md files. Updated GitHub Action to look for changelogs in per-crate directories before falling back to root CHANGELOG.md. (by @jxom, [#33](https://github.com/wevm/changelogs/pull/33))
+
 ## `changelogs@0.5.1`
 
 ### Patch Changes
