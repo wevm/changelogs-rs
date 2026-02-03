@@ -40,17 +40,17 @@ flowchart LR
 ### Development
 
 1. Implement feature & **make changes** to your code
-2. **Open a PR** to propose your changes
+2. **Open a PR** to propose your changes ([example](https://github.com/wevm/changelogs-rs/pull/20))
    1. Changelogs are auto-generated via AI (if `wevm/changelogs-rs/gen` action set up)
    2. Changelogs can be manually generated with `changelogs add`
-3. **Merge the PR**
+3. **Merge the PR** ([example](https://github.com/wevm/changelogs-rs/pull/20/files#diff-changelog))
    1. Changelogs are kept in the `.changelog/` directory
 
 ### Release (Candidate)
 
 1. **Pushes to main** trigger the Release Candidate workflow
-2. **Workflow** creates or updates a Release Candidate PR with RC changelog
-3. **Merge the PR** to release and publish the changelog
+2. **Workflow** creates or updates a Release Candidate PR with RC changelog ([example](https://github.com/wevm/changelogs-rs/pull/21))
+3. **Merge the PR** to release and publish the changelog ([example](https://github.com/wevm/changelogs-rs/releases/tag/changelogs%400.4.0))
 
 ## Commands
 
