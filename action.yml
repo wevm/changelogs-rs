@@ -253,7 +253,7 @@ runs:
           if [ -n "$changelog_notes" ]; then
             notes="$changelog_notes"
             if [ -n "$github_extras" ]; then
-              notes="$notes"$'\n'"$github_extras"
+              notes="$notes"$'\n\n'"$github_extras"
             fi
             echo "$notes" | gh release create "$tag" --notes-file - || true
           else
