@@ -49,22 +49,20 @@ flowchart LR
 
 ### Development
 
-<table width="100%">
-<tr><th align="center">#</th><th align="left">Step</th><th align="right">Example</th></tr>
-<tr><td align="center">1</td><td>Implement feature & make changes to your code</td><td align="right"></td></tr>
-<tr><td align="center">2</td><td>Open a PR to propose your changes</td><td align="right"><a href="https://github.com/wevm/changelogs-rs/pull/20">PR #20</a></td></tr>
-<tr><td align="center">→</td><td>Changelogs are auto-generated via AI</td><td align="right"><a href="https://github.com/wevm/changelogs-rs/actions/runs/21611102210/job/62279809755">Action</a> · <a href="https://github.com/wevm/changelogs-rs/pull/20/files#diff-29deee10b009554f662a4a8a0579ad9c514f5458f91c61503fef5c49a50ee915">Generated</a></td></tr>
-<tr><td align="center">3</td><td>Merge the PR – changelogs get staged</td><td align="right"><a href="https://github.com/wevm/changelogs-rs/tree/2b98da3f2e2f89549e324f98145ce64cb68f287b/.changelog"><code>.changelog/</code></a></td></tr>
-</table>
+| # | Step | Example |
+|:-:|:-----|--------:|
+| 1 | Implement feature & make changes to your code | |
+| 2 | Open a PR to propose your changes | [PR #20](https://github.com/wevm/changelogs-rs/pull/20) |
+| → | Changelogs are auto-generated via AI | [Action](https://github.com/wevm/changelogs-rs/actions/runs/21611102210/job/62279809755) · [Generated](https://github.com/wevm/changelogs-rs/pull/20/files#diff-29deee10b009554f662a4a8a0579ad9c514f5458f91c61503fef5c49a50ee915) |
+| 3 | Merge the PR – changelogs get staged | [`.changelog/`](https://github.com/wevm/changelogs-rs/tree/2b98da3f2e2f89549e324f98145ce64cb68f287b/.changelog) |
 
 ### Release (Candidate)
 
-<table width="100%">
-<tr><th align="center">#</th><th align="left">Step</th><th align="right">Example</th></tr>
-<tr><td align="center">1</td><td>Push to main triggers the Release Candidate workflow</td><td align="right"><a href="https://github.com/wevm/changelogs-rs/actions/runs/21611161512/job/62280000547">Action</a></td></tr>
-<tr><td align="center">2</td><td>Workflow creates or updates a Release Candidate PR with version bumps and changelog</td><td align="right"><a href="https://github.com/wevm/changelogs-rs/pull/21">PR #21</a></td></tr>
-<tr><td align="center">3</td><td>Merge the PR to release packages and publish the changelog</td><td align="right"><a href="https://github.com/wevm/changelogs-rs/releases/tag/changelogs%400.4.0"><code>v0.4.0</code> release</a></td></tr>
-</table>
+| # | Step | Example |
+|:-:|:-----|--------:|
+| 1 | Push to main triggers the Release Candidate workflow | [Action](https://github.com/wevm/changelogs-rs/actions/runs/21611161512/job/62280000547) |
+| 2 | Workflow creates or updates a Release Candidate PR with version bumps and changelog | [PR #21](https://github.com/wevm/changelogs-rs/pull/21) |
+| 3 | Merge the PR to release packages and publish the changelog | [`v0.4.0` release](https://github.com/wevm/changelogs-rs/releases/tag/changelogs%400.4.0) |
 
 ## Installation
 
