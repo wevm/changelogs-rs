@@ -25,7 +25,7 @@ jobs:
       - name: Check changelogs
         uses: ./check
         with:
-          ai: 'claude -p'
+          ai: 'claude -p --dangerously-skip-permissions'
           conventional-commit: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
