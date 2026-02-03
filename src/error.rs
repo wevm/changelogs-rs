@@ -2,7 +2,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("could not detect workspace. specify ecosystem with: changelogs --ecosystem <rust|python> init")]
+    #[error(
+        "could not detect workspace. specify ecosystem with: changelogs --ecosystem <rust|python> init"
+    )]
     NotInWorkspace,
 
     #[error("changelogs already initialized")]
