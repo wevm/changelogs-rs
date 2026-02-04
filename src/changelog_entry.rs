@@ -121,81 +121,85 @@ pub struct CommitInfo {
 pub fn get_commit_info(_changelog_dir: &Path, id: &str) -> Option<CommitInfo> {
     let file_path = format!(".changelog/{}.md", id);
 
-    // First, try to find the merge commit that brought this file into the current branch
-    // This gives us the PR number from the merge commit message (e.g., "Merge pull request #37")
+    // Step 1: Find the commit that originally added the file
+    let add_commit = find_add_commit(&file_path)?;
+
+    // Step 2: Find the first merge commit that contains the add commit
+    // Using --ancestry-path --reverse to get merges from oldest to newest
     let merge_output = std::process::Command::new("git")
         .args([
             "log",
             "--merges",
             "--ancestry-path",
+            "--reverse",
             "--format=%H %s",
-            "-1",
-            "--",
-            &file_path,
+            &format!("{}..HEAD", add_commit),
         ])
         .output()
         .ok()?;
 
     let merge_stdout = String::from_utf8_lossy(&merge_output.stdout);
-    let merge_line = merge_stdout.trim();
 
-    // If we found a merge commit, use it
-    if !merge_line.is_empty() {
-        let parts: Vec<&str> = merge_line.splitn(2, ' ').collect();
-        if parts.len() >= 2 {
-            let commit_sha = parts[0].to_string();
-            let commit_message = parts[1];
-            let pr_number = extract_pr_number(commit_message);
+    // Take the first merge commit (oldest one that brought this change in)
+    if let Some(merge_line) = merge_stdout.lines().next() {
+        let merge_line = merge_line.trim();
+        if !merge_line.is_empty() {
+            let parts: Vec<&str> = merge_line.splitn(2, ' ').collect();
+            if parts.len() >= 2 {
+                let commit_sha = parts[0].to_string();
+                let commit_message = parts[1];
+                let pr_number = extract_pr_number(commit_message);
 
-            if pr_number.is_some() {
-                let authors = get_commit_authors(&file_path);
-                return Some(CommitInfo {
-                    pr_number,
-                    commit_sha,
-                    authors,
-                });
+                if pr_number.is_some() {
+                    let authors = get_commit_authors(&file_path);
+                    return Some(CommitInfo {
+                        pr_number,
+                        commit_sha,
+                        authors,
+                    });
+                }
             }
         }
     }
 
-    // Fallback: find the commit that added the file
+    // Fallback: use the add commit itself (for direct pushes without merge commits)
+    let output = std::process::Command::new("git")
+        .args(["log", "--format=%s", "-1", &add_commit])
+        .output()
+        .ok()?;
+
+    let commit_message = String::from_utf8_lossy(&output.stdout);
+    let pr_number = extract_pr_number(commit_message.trim());
+    let authors = get_commit_authors(&file_path);
+
+    Some(CommitInfo {
+        pr_number,
+        commit_sha: add_commit,
+        authors,
+    })
+}
+
+fn find_add_commit(file_path: &str) -> Option<String> {
     let output = std::process::Command::new("git")
         .args([
             "log",
             "--follow",
             "--diff-filter=A",
-            "--format=%H %s",
+            "--format=%H",
             "-1",
             "--",
-            &file_path,
+            file_path,
         ])
         .output()
         .ok()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let line = stdout.trim();
-
-    if line.is_empty() {
-        return None;
+    let sha = stdout.trim();
+    if sha.is_empty() {
+        None
+    } else {
+        Some(sha.to_string())
     }
-
-    let parts: Vec<&str> = line.splitn(2, ' ').collect();
-    if parts.len() < 2 {
-        return None;
-    }
-
-    let commit_sha = parts[0].to_string();
-    let commit_message = parts[1];
-
-    let pr_number = extract_pr_number(commit_message);
-
-    let authors = get_commit_authors(&file_path);
-
-    Some(CommitInfo {
-        pr_number,
-        commit_sha,
-        authors,
-    })
 }
 
 fn get_commit_authors(file_path: &str) -> Vec<String> {
