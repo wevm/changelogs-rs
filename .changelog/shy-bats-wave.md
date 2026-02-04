@@ -2,4 +2,4 @@
 changelogs: patch
 ---
 
-Fixed PR number detection to find the *first* merge commit that brought a changelog file into the branch, rather than the most recent one. This prevents incorrect PR attribution on release branches where later merges could incorrectly claim authorship.
+Fixed PR number detection to check the add commit's message first (for squash merges), then fall back to merge commits. This ensures correct PR attribution for repositories using squash-and-merge workflow.

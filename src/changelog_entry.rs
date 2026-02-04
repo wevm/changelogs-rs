@@ -124,8 +124,26 @@ pub fn get_commit_info(_changelog_dir: &Path, id: &str) -> Option<CommitInfo> {
     // Step 1: Find the commit that originally added the file
     let add_commit = find_add_commit(&file_path)?;
 
-    // Step 2: Find the first merge commit that contains the add commit
-    // Using --ancestry-path --reverse to get merges from oldest to newest
+    // Step 2: Check if the add commit itself has a PR number (squash merge case)
+    // For squash merges, the commit message contains "(#123)"
+    let output = std::process::Command::new("git")
+        .args(["log", "--format=%s", "-1", &add_commit])
+        .output()
+        .ok()?;
+
+    let commit_message = String::from_utf8_lossy(&output.stdout);
+    let authors = get_commit_authors(&file_path);
+
+    if let Some(pr_number) = extract_pr_number(commit_message.trim()) {
+        return Some(CommitInfo {
+            pr_number: Some(pr_number),
+            commit_sha: add_commit,
+            authors,
+        });
+    }
+
+    // Step 3: Look for merge commit (traditional merge case)
+    // Find the first merge commit that contains the add commit
     let merge_output = std::process::Command::new("git")
         .args([
             "log",
@@ -140,7 +158,6 @@ pub fn get_commit_info(_changelog_dir: &Path, id: &str) -> Option<CommitInfo> {
 
     let merge_stdout = String::from_utf8_lossy(&merge_output.stdout);
 
-    // Take the first merge commit (oldest one that brought this change in)
     if let Some(merge_line) = merge_stdout.lines().next() {
         let merge_line = merge_line.trim();
         if !merge_line.is_empty() {
@@ -148,12 +165,9 @@ pub fn get_commit_info(_changelog_dir: &Path, id: &str) -> Option<CommitInfo> {
             if parts.len() >= 2 {
                 let commit_sha = parts[0].to_string();
                 let commit_message = parts[1];
-                let pr_number = extract_pr_number(commit_message);
-
-                if pr_number.is_some() {
-                    let authors = get_commit_authors(&file_path);
+                if let Some(pr_number) = extract_pr_number(commit_message) {
                     return Some(CommitInfo {
-                        pr_number,
+                        pr_number: Some(pr_number),
                         commit_sha,
                         authors,
                     });
@@ -162,18 +176,9 @@ pub fn get_commit_info(_changelog_dir: &Path, id: &str) -> Option<CommitInfo> {
         }
     }
 
-    // Fallback: use the add commit itself (for direct pushes without merge commits)
-    let output = std::process::Command::new("git")
-        .args(["log", "--format=%s", "-1", &add_commit])
-        .output()
-        .ok()?;
-
-    let commit_message = String::from_utf8_lossy(&output.stdout);
-    let pr_number = extract_pr_number(commit_message.trim());
-    let authors = get_commit_authors(&file_path);
-
+    // Fallback: no PR number found
     Some(CommitInfo {
-        pr_number,
+        pr_number: None,
         commit_sha: add_commit,
         authors,
     })
