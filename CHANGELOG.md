@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 (2026-02-04)
+
+### Minor Changes
+
+- Replaced auto-generate workflow with check action that comments on PRs with changelog status and optional AI-generated previews. (by @jxom, [#37](https://github.com/wevm/changelogs-rs/pull/37))
+
+### Patch Changes
+
+- Fixed PR number detection to find the *first* merge commit that brought a changelog file into the branch, rather than the most recent one. This prevents incorrect PR attribution on release branches where later merges could incorrectly claim authorship. (by @jxom, [#40](https://github.com/wevm/changelogs-rs/pull/40))
+
 ## `changelogs@0.5.2`
 
 ### Patch Changes
