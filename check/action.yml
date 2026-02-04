@@ -10,6 +10,9 @@ inputs:
     description: 'Base ref to compare against'
     required: false
     default: ${{ github.base_ref }}
+  ecosystem:
+    description: 'Package ecosystem (rust, python). If not set, auto-detected.'
+    required: false
   token:
     description: 'GitHub token for commenting on PR'
     required: false
@@ -48,7 +51,11 @@ runs:
         export PATH="$HOME/.local/bin:$PATH"
         
         # Run changelogs add with AI, capture the generated file
-        changelogs add --ai "${{ inputs.ai }}" --ref origin/${{ inputs.ref }}
+        ARGS="--ai \"${{ inputs.ai }}\" --ref origin/${{ inputs.ref }}"
+        if [ -n "${{ inputs.ecosystem }}" ]; then
+          ARGS="$ARGS --ecosystem \"${{ inputs.ecosystem }}\""
+        fi
+        eval "changelogs add $ARGS"
         
         # Find the generated changelog file
         GENERATED_FILE=$(ls -t .changelog/*.md | grep -v README.md | head -n1)
