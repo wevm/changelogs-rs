@@ -50,24 +50,29 @@ runs:
       run: |
         export PATH="$HOME/.local/bin:$PATH"
         
-        # Run changelogs add with AI, capture the generated file
+        # Build command with optional ecosystem flag
         ARGS="--ai \"${{ inputs.ai }}\" --ref origin/${{ inputs.ref }}"
         if [ -n "${{ inputs.ecosystem }}" ]; then
           ARGS="$ARGS --ecosystem \"${{ inputs.ecosystem }}\""
         fi
-        eval "changelogs add $ARGS"
         
-        # Find the generated changelog file
-        GENERATED_FILE=$(ls -t .changelog/*.md | grep -v README.md | head -n1)
-        if [ -n "$GENERATED_FILE" ]; then
-          CONTENT=$(cat "$GENERATED_FILE")
-          # Clean up - we only wanted to generate, not keep
-          rm "$GENERATED_FILE"
-          
-          # Write to temp file for later use
-          echo "$CONTENT" > /tmp/ai_changelog.md
-          echo "generated=true" >> $GITHUB_OUTPUT
+        # Try to generate with AI - if it fails (e.g., no API key for fork PRs), continue without AI
+        if eval "changelogs add $ARGS" 2>/dev/null; then
+          # Find the generated changelog file
+          GENERATED_FILE=$(ls -t .changelog/*.md | grep -v README.md | head -n1)
+          if [ -n "$GENERATED_FILE" ]; then
+            CONTENT=$(cat "$GENERATED_FILE")
+            # Clean up - we only wanted to generate, not keep
+            rm "$GENERATED_FILE"
+            
+            # Write to temp file for later use
+            echo "$CONTENT" > /tmp/ai_changelog.md
+            echo "generated=true" >> $GITHUB_OUTPUT
+          else
+            echo "generated=false" >> $GITHUB_OUTPUT
+          fi
         else
+          echo "AI generation failed (missing API key?), continuing without AI"
           echo "generated=false" >> $GITHUB_OUTPUT
         fi
 
