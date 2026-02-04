@@ -121,44 +121,7 @@ pub struct CommitInfo {
 pub fn get_commit_info(_changelog_dir: &Path, id: &str) -> Option<CommitInfo> {
     let file_path = format!(".changelog/{}.md", id);
 
-    // First, try to find the merge commit that brought this file into the current branch
-    // This gives us the PR number from the merge commit message (e.g., "Merge pull request #37")
-    let merge_output = std::process::Command::new("git")
-        .args([
-            "log",
-            "--merges",
-            "--ancestry-path",
-            "--format=%H %s",
-            "-1",
-            "--",
-            &file_path,
-        ])
-        .output()
-        .ok()?;
-
-    let merge_stdout = String::from_utf8_lossy(&merge_output.stdout);
-    let merge_line = merge_stdout.trim();
-
-    // If we found a merge commit, use it
-    if !merge_line.is_empty() {
-        let parts: Vec<&str> = merge_line.splitn(2, ' ').collect();
-        if parts.len() >= 2 {
-            let commit_sha = parts[0].to_string();
-            let commit_message = parts[1];
-            let pr_number = extract_pr_number(commit_message);
-
-            if pr_number.is_some() {
-                let authors = get_commit_authors(&file_path);
-                return Some(CommitInfo {
-                    pr_number,
-                    commit_sha,
-                    authors,
-                });
-            }
-        }
-    }
-
-    // Fallback: find the commit that added the file
+    // First, find the commit that added the file
     let output = std::process::Command::new("git")
         .args([
             "log",
@@ -184,16 +147,53 @@ pub fn get_commit_info(_changelog_dir: &Path, id: &str) -> Option<CommitInfo> {
         return None;
     }
 
-    let commit_sha = parts[0].to_string();
-    let commit_message = parts[1];
+    let add_commit_sha = parts[0].to_string();
+    let add_commit_message = parts[1];
 
-    let pr_number = extract_pr_number(commit_message);
+    // Try to find the merge commit that brought the adding-commit into the main branch
+    // This gives us the correct PR number (e.g., "Merge pull request #37 from user/branch")
+    let merge_output = std::process::Command::new("git")
+        .args([
+            "log",
+            "--merges",
+            "--ancestry-path",
+            &format!("{}..HEAD", add_commit_sha),
+            "--format=%H %s",
+            "--reverse", // Get the FIRST merge, not the most recent
+        ])
+        .output()
+        .ok();
 
+    if let Some(merge_output) = merge_output {
+        let merge_stdout = String::from_utf8_lossy(&merge_output.stdout);
+        // Take the first line (first merge commit after the adding commit)
+        if let Some(merge_line) = merge_stdout.lines().next() {
+            let merge_line = merge_line.trim();
+            if !merge_line.is_empty() {
+                let merge_parts: Vec<&str> = merge_line.splitn(2, ' ').collect();
+                if merge_parts.len() >= 2 {
+                    let merge_commit_sha = merge_parts[0].to_string();
+                    let merge_message = merge_parts[1];
+                    if let Some(pr_number) = extract_pr_number(merge_message) {
+                        let authors = get_commit_authors(&file_path);
+                        return Some(CommitInfo {
+                            pr_number: Some(pr_number),
+                            commit_sha: merge_commit_sha,
+                            authors,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback: use the commit that added the file
+    let pr_number = extract_pr_number(add_commit_message);
     let authors = get_commit_authors(&file_path);
 
     Some(CommitInfo {
         pr_number,
-        commit_sha,
+        commit_sha: add_commit_sha,
         authors,
     })
 }
