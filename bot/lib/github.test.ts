@@ -1,8 +1,9 @@
+import crypto from "node:crypto";
 import { Octokit } from "@octokit/rest";
 import { describe, expect, test } from "vitest";
 import * as GitHub from "./github.js";
 
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+const octokit = new Octokit({ auth: import.meta.env.VITE_GITHUB_TOKEN });
 const owner = "wevm";
 const repo = "changelogs-rs";
 
@@ -10,19 +11,18 @@ describe("GitHub.verifySignature", () => {
   const secret = "test-secret";
   const payload = '{"action":"opened"}';
 
-  test("valid", () => {
-    const crypto = require("node:crypto");
+  test("valid", async () => {
     const sig =
       "sha256=" +
       crypto.createHmac("sha256", secret).update(payload).digest("hex");
     expect(
-      GitHub.verifySignature({ payload, signature: sig, secret }),
+      await GitHub.verifySignature({ payload, signature: sig, secret }),
     ).toMatchInlineSnapshot(`true`);
   });
 
-  test("invalid", () => {
+  test("invalid", async () => {
     expect(
-      GitHub.verifySignature({
+      await GitHub.verifySignature({
         payload,
         signature: "sha256=invalid",
         secret,
@@ -30,9 +30,9 @@ describe("GitHub.verifySignature", () => {
     ).toMatchInlineSnapshot(`false`);
   });
 
-  test("null signature", () => {
+  test("null signature", async () => {
     expect(
-      GitHub.verifySignature({ payload, signature: null, secret }),
+      await GitHub.verifySignature({ payload, signature: null, secret }),
     ).toMatchInlineSnapshot(`false`);
   });
 });

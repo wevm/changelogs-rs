@@ -3,7 +3,7 @@ const cerebrasApiUrl = "https://api.cerebras.ai/v1/chat/completions";
 export async function generateChangelog(
   parameters: generateChangelog.Parameters,
 ): Promise<string | null> {
-  const apiKey = process.env.CEREBRAS_API_KEY;
+  const { apiKey } = parameters;
   if (!apiKey) return null;
 
   const packages =
@@ -67,6 +67,7 @@ ${parameters.diff}`;
 
 export declare namespace generateChangelog {
   type Parameters = {
+    apiKey: string | undefined;
     diff: string;
     packageNames: string[];
   };

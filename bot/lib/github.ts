@@ -1,21 +1,34 @@
-import crypto from "node:crypto";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 
-export function verifySignature(
+export async function verifySignature(
   parameters: verifySignature.Parameters,
-): boolean {
+): Promise<boolean> {
   if (!parameters.signature) return false;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(parameters.secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signatureBytes = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(parameters.payload),
+  );
   const expected =
     "sha256=" +
-    crypto
-      .createHmac("sha256", parameters.secret)
-      .update(parameters.payload)
-      .digest("hex");
-  const sigBuffer = Buffer.from(parameters.signature);
-  const expectedBuffer = Buffer.from(expected);
-  if (sigBuffer.length !== expectedBuffer.length) return false;
-  return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
+    Array.from(new Uint8Array(signatureBytes))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  if (parameters.signature.length !== expected.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < expected.length; i++) {
+    mismatch |= parameters.signature.charCodeAt(i) ^ expected.charCodeAt(i);
+  }
+  return mismatch === 0;
 }
 
 export declare namespace verifySignature {
@@ -32,8 +45,8 @@ export async function createOctokit(
   return new Octokit({
     authStrategy: createAppAuth,
     auth: {
-      appId: process.env.GITHUB_APP_ID ?? "",
-      privateKey: process.env.GITHUB_PRIVATE_KEY ?? "",
+      appId: parameters.appId,
+      privateKey: parameters.privateKey,
       installationId: parameters.installationId,
     },
   });
@@ -41,7 +54,9 @@ export async function createOctokit(
 
 export declare namespace createOctokit {
   type Parameters = {
+    appId: string;
     installationId: number;
+    privateKey: string;
   };
 }
 
@@ -123,7 +138,7 @@ async function discoverPackages(
       ref: parameters.ref,
     });
     if ("content" in data) {
-      const content = Buffer.from(data.content, "base64").toString();
+      const content = atob(data.content);
       const workspaceMembers = content.match(
         /members\s*=\s*\[([\s\S]*?)\]/,
       )?.[1];
@@ -131,7 +146,7 @@ async function discoverPackages(
         const memberPaths =
           workspaceMembers
             .match(/"([^"]+)"/g)
-            ?.map((m) => m.replace(/"/g, "")) ?? [];
+            ?.map((m: string) => m.replace(/"/g, "")) ?? [];
         const packages: PackageInfo[] = [];
         for (const memberPath of memberPaths) {
           const name = await getCargoPackageName({
@@ -160,14 +175,16 @@ async function discoverPackages(
       ref: parameters.ref,
     });
     if ("content" in data) {
-      const content = Buffer.from(data.content, "base64").toString();
+      const content = atob(data.content);
 
       const uvMembers = content.match(
         /\[tool\.uv\.workspace\][\s\S]*?members\s*=\s*\[([\s\S]*?)\]/,
       )?.[1];
       if (uvMembers) {
         const memberPaths =
-          uvMembers.match(/"([^"]+)"/g)?.map((m) => m.replace(/"/g, "")) ?? [];
+          uvMembers
+            .match(/"([^"]+)"/g)
+            ?.map((m: string) => m.replace(/"/g, "")) ?? [];
         const packages: PackageInfo[] = [];
         for (const memberPath of memberPaths) {
           const name = await getPythonPackageName({
@@ -212,7 +229,7 @@ async function getPythonPackageName(
       ref: parameters.ref,
     });
     if ("content" in data) {
-      const content = Buffer.from(data.content, "base64").toString();
+      const content = atob(data.content);
       return (
         content.match(/\[project\][\s\S]*?name\s*=\s*"([^"]+)"/)?.[1] ??
         content.match(/\[tool\.poetry\][\s\S]*?name\s*=\s*"([^"]+)"/)?.[1] ??
@@ -244,7 +261,7 @@ async function getCargoPackageName(
       ref: parameters.ref,
     });
     if ("content" in data) {
-      const content = Buffer.from(data.content, "base64").toString();
+      const content = atob(data.content);
       return content.match(/name\s*=\s*"([^"]+)"/)?.[1] ?? null;
     }
   } catch {

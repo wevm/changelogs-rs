@@ -20,6 +20,7 @@ index abc1234..def5678 100644
 describe("AI.generateChangelog", () => {
   test("generates a valid changelog entry", async () => {
     const result = await AI.generateChangelog({
+      apiKey: import.meta.env.VITE_CEREBRAS_API_KEY,
       diff: sampleDiff,
       packageNames: ["changelogs"],
     });
@@ -28,14 +29,12 @@ describe("AI.generateChangelog", () => {
     expect(result).toMatch(/changelogs:\s*(patch|minor|major)/);
   });
 
-  test("returns null without CEREBRAS_API_KEY", async () => {
-    const original = process.env.CEREBRAS_API_KEY;
-    process.env.CEREBRAS_API_KEY = "";
+  test("returns null without apiKey", async () => {
     const result = await AI.generateChangelog({
+      apiKey: undefined,
       diff: sampleDiff,
       packageNames: ["changelogs"],
     });
     expect(result).toBeNull();
-    process.env.CEREBRAS_API_KEY = original;
   });
 });

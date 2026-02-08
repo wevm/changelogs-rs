@@ -7,7 +7,8 @@
     "esModuleInterop": true,
     "outDir": "dist",
     "rootDir": ".",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["@cloudflare/workers-types", "@types/node", "vite/client"]
   },
   "include": ["api/**/*.ts", "lib/**/*.ts"]
 }

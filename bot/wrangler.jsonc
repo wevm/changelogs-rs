@@ -1,0 +1,5 @@
+{
+  "name": "changelogs-bot",
+  "main": "api/webhook.ts",
+  "compatibility_date": "2025-02-09"
+}
