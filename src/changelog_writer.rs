@@ -40,7 +40,16 @@ pub fn generate_entry(
     changelogs: &[Changelog],
     changelog_dir: &Path,
 ) -> String {
-    let date = Utc::now().format("%Y-%m-%d");
+    let date = Utc::now().format("%Y-%m-%d").to_string();
+    generate_entry_with_date(release, changelogs, changelog_dir, &date)
+}
+
+pub fn generate_entry_with_date(
+    release: &PackageRelease,
+    changelogs: &[Changelog],
+    changelog_dir: &Path,
+    date: &str,
+) -> String {
     let mut entry = format!("## {} ({})\n\n", release.new_version, date);
 
     let github_url = get_github_url();
@@ -183,6 +192,17 @@ pub fn write_changelogs(
     changelogs: &[Changelog],
     format: ChangelogFormat,
 ) -> Result<()> {
+    let date = Utc::now().format("%Y-%m-%d").to_string();
+    write_changelogs_with_date(workspace, releases, changelogs, format, &date)
+}
+
+pub fn write_changelogs_with_date(
+    workspace: &Workspace,
+    releases: &[PackageRelease],
+    changelogs: &[Changelog],
+    format: ChangelogFormat,
+    date: &str,
+) -> Result<()> {
     let changelog_dir = &workspace.changelog_dir;
 
     match format {
@@ -190,7 +210,8 @@ pub fn write_changelogs(
             for release in releases {
                 if let Some(package) = workspace.get_package(&release.name) {
                     let mut entry = format!("## `{}@{}`\n\n", release.name, release.new_version);
-                    let generated = generate_entry(release, changelogs, changelog_dir);
+                    let generated =
+                        generate_entry_with_date(release, changelogs, changelog_dir, date);
                     let entry_body = generated.lines().skip(2).collect::<Vec<_>>().join("\n");
                     entry.push_str(&entry_body);
                     entry.push('\n');
@@ -204,7 +225,7 @@ pub fn write_changelogs(
             let mut combined_entry = String::new();
 
             for release in releases {
-                let entry = generate_entry(release, changelogs, changelog_dir);
+                let entry = generate_entry_with_date(release, changelogs, changelog_dir, date);
                 combined_entry.push_str(&entry);
             }
 

@@ -1,0 +1,4 @@
+dependent_bump = "none"
+
+[changelog]
+format = "root"
