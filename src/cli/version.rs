@@ -34,6 +34,13 @@ pub fn run(ecosystem: Option<Ecosystem>) -> Result<()> {
         return Ok(());
     }
 
+    if !release_plan.warnings.is_empty() {
+        for warning in &release_plan.warnings {
+            println!("  {} {}", style("!").yellow().bold(), style(warning).yellow());
+        }
+        println!();
+    }
+
     println!("{} Updating versions...\n", style("→").blue().bold());
 
     let mut version_updates: HashMap<String, Version> = HashMap::new();

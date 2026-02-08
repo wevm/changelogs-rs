@@ -10,6 +10,7 @@ use std::collections::HashMap;
 pub struct ReleasePlan {
     pub changelogs: Vec<Changelog>,
     pub releases: Vec<PackageRelease>,
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -120,27 +121,31 @@ pub fn assemble(workspace: &Workspace, changelogs: Vec<Changelog>, config: &Conf
         }
     }
 
-    let mut releases: Vec<PackageRelease> = bump_map
-        .into_iter()
-        .filter_map(|(name, bump)| {
-            let package = workspace.get_package(&name)?;
-            let new_version = bump_version(&package.version, bump);
+    let mut warnings: Vec<String> = Vec::new();
+    let mut releases: Vec<PackageRelease> = Vec::new();
 
-            Some(PackageRelease {
+    for (name, bump) in bump_map {
+        if let Some(package) = workspace.get_package(&name) {
+            let new_version = bump_version(&package.version, bump);
+            releases.push(PackageRelease {
                 name: name.clone(),
                 bump,
                 old_version: package.version.clone(),
                 new_version,
                 changelog_ids: changelog_map.remove(&name).unwrap_or_default(),
-            })
-        })
-        .collect();
+            });
+        } else {
+            warnings.push(format!("changelog references unknown package '{}'", name));
+        }
+    }
 
     releases.sort_by(|a, b| a.name.cmp(&b.name));
+    warnings.sort();
 
     ReleasePlan {
         changelogs,
         releases,
+        warnings,
     }
 }
 
