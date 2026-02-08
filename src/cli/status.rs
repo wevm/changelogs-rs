@@ -77,7 +77,11 @@ pub fn run(verbose: bool, ecosystem: Option<Ecosystem>) -> Result<()> {
     if !release_plan.warnings.is_empty() {
         println!();
         for warning in &release_plan.warnings {
-            println!("  {} {}", style("!").yellow().bold(), style(warning).yellow());
+            println!(
+                "  {} {}",
+                style("!").yellow().bold(),
+                style(warning).yellow()
+            );
         }
     }
 
