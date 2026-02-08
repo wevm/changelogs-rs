@@ -1,0 +1,7 @@
+[[packages]]
+name = "core"
+version = "1.0.0"
+
+[[packages]]
+name = "utils"
+version = "2.3.0"
