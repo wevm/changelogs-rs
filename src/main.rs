@@ -63,7 +63,11 @@ enum Commands {
     Up,
 
     /// Apply version bumps and update changelogs
-    Version,
+    Version {
+        /// Compute and display the release plan without writing any files
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -82,7 +86,7 @@ fn main() -> Result<()> {
         }
         Commands::Status { verbose } => cli::status::run(verbose, cli.ecosystem)?,
         Commands::Up => cli::up::run()?,
-        Commands::Version => cli::version::run(cli.ecosystem)?,
+        Commands::Version { dry_run } => cli::version::run(dry_run, cli.ecosystem)?,
     }
 
     Ok(())
