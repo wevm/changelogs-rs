@@ -1,0 +1,9 @@
+[[packages]]
+name = "alpha"
+version = "1.0.0"
+deps = ["beta"]
+
+[[packages]]
+name = "beta"
+version = "1.0.0"
+deps = ["alpha"]

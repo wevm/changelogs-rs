@@ -15,6 +15,16 @@ Each subdirectory is a self-contained test case. The test runner in `tests/golde
    ```
 4. Run `cargo test --test golden` to verify
 
+## Blessing golden files
+
+To auto-generate or update the `expected/` files from actual output:
+
+```sh
+UPDATE_GOLDENS=1 cargo test --test golden
+```
+
+This overwrites `expected/releases.txt` and `expected/*CHANGELOG.md` with the current output. Review the diff before committing.
+
 ## Fixture structure
 
 ```

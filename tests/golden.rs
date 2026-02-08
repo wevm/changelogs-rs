@@ -17,6 +17,10 @@ fn fixtures_root() -> PathBuf {
         .join("fixtures")
 }
 
+fn should_bless() -> bool {
+    std::env::var("UPDATE_GOLDENS").is_ok()
+}
+
 #[derive(Deserialize)]
 struct PackageDef {
     name: String,
@@ -71,26 +75,29 @@ fn run_golden_test(fixture_name: &str) {
         ecosystem: Ecosystem::Rust,
     };
 
-    let mut changelogs = changelog_entry::read_all(&changelog_dir).unwrap();
-    changelogs.sort_by(|a, b| a.id.cmp(&b.id));
+    let changelogs = changelog_entry::read_all(&changelog_dir).unwrap();
 
     let config = load_config(&fixture);
     let release_plan = plan::assemble(&workspace, changelogs.clone(), &config);
 
-    // Check releases.txt if present
-    let releases_golden = fixture.join("expected/releases.txt");
-    if releases_golden.exists() {
-        let expected = std::fs::read_to_string(&releases_golden).unwrap();
+    let expected_dir = fixture.join("expected");
+    if !expected_dir.exists() {
+        std::fs::create_dir_all(&expected_dir).unwrap();
+    }
+
+    // Check releases.txt
+    let releases_golden = expected_dir.join("releases.txt");
+    if releases_golden.exists() || should_bless() {
         let actual = format_releases(&release_plan.releases);
-        assert_eq!(actual, expected, "[{fixture_name}] releases.txt mismatch");
+        if should_bless() && !release_plan.releases.is_empty() {
+            std::fs::write(&releases_golden, &actual).unwrap();
+        } else if releases_golden.exists() {
+            let expected = std::fs::read_to_string(&releases_golden).unwrap();
+            assert_eq!(actual, expected, "[{fixture_name}] releases.txt mismatch");
+        }
     }
 
     // Check CHANGELOG golden files
-    let expected_dir = fixture.join("expected");
-    if !expected_dir.exists() {
-        return;
-    }
-
     let has_changelog_golden = std::fs::read_dir(&expected_dir)
         .unwrap()
         .filter_map(|e| e.ok())
@@ -102,7 +109,7 @@ fn run_golden_test(fixture_name: &str) {
                 .contains("CHANGELOG")
         });
 
-    if !has_changelog_golden {
+    if !has_changelog_golden && !should_bless() {
         return;
     }
 
@@ -115,6 +122,11 @@ fn run_golden_test(fixture_name: &str) {
     )
     .unwrap();
 
+    if should_bless() {
+        bless_changelogs(&workspace, &config, &expected_dir);
+        return;
+    }
+
     for entry in std::fs::read_dir(&expected_dir).unwrap() {
         let entry = entry.unwrap();
         let filename = entry.file_name().to_string_lossy().to_string();
@@ -124,7 +136,6 @@ fn run_golden_test(fixture_name: &str) {
         }
 
         let expected = std::fs::read_to_string(entry.path()).unwrap();
-
         let actual_path = resolve_changelog_path(&workspace, &filename, &config);
         let actual = std::fs::read_to_string(&actual_path).unwrap_or_else(|_| {
             panic!(
@@ -137,23 +148,52 @@ fn run_golden_test(fixture_name: &str) {
     }
 }
 
+fn bless_changelogs(workspace: &Workspace, config: &Config, expected_dir: &Path) {
+    use changelogs::config::ChangelogFormat;
+
+    match config.changelog.format {
+        ChangelogFormat::Root => {
+            let src = workspace.root.join("CHANGELOG.md");
+            if src.exists() {
+                std::fs::copy(&src, expected_dir.join("CHANGELOG.md")).unwrap();
+            }
+        }
+        ChangelogFormat::PerCrate => {
+            if workspace.packages.len() == 1 {
+                let src = workspace.packages[0].path.join("CHANGELOG.md");
+                if src.exists() {
+                    std::fs::copy(&src, expected_dir.join("CHANGELOG.md")).unwrap();
+                }
+            } else {
+                for pkg in &workspace.packages {
+                    let src = pkg.path.join("CHANGELOG.md");
+                    if src.exists() {
+                        let golden_name = format!("{}-CHANGELOG.md", pkg.name);
+                        std::fs::copy(&src, expected_dir.join(golden_name)).unwrap();
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn resolve_changelog_path(workspace: &Workspace, golden_name: &str, config: &Config) -> PathBuf {
     use changelogs::config::ChangelogFormat;
 
-    if config.changelog.format == ChangelogFormat::Root || golden_name == "CHANGELOG.md" {
-        if config.changelog.format == ChangelogFormat::Root {
-            return workspace.root.join("CHANGELOG.md");
-        }
-
-        if workspace.packages.len() == 1 {
-            return workspace.packages[0].path.join("CHANGELOG.md");
-        }
+    if config.changelog.format == ChangelogFormat::Root {
+        return workspace.root.join("CHANGELOG.md");
     }
 
-    // For per-crate with multiple packages: golden file is named "<pkg>-CHANGELOG.md"
-    let pkg_name = golden_name.strip_suffix("-CHANGELOG.md").unwrap_or("");
-    if let Some(pkg) = workspace.packages.iter().find(|p| p.name == pkg_name) {
-        return pkg.path.join("CHANGELOG.md");
+    // Per-crate: single package uses CHANGELOG.md directly
+    if workspace.packages.len() == 1 && golden_name == "CHANGELOG.md" {
+        return workspace.packages[0].path.join("CHANGELOG.md");
+    }
+
+    // Per-crate with multiple packages: golden file is named "<pkg>-CHANGELOG.md"
+    if let Some(pkg_name) = golden_name.strip_suffix("-CHANGELOG.md") {
+        if let Some(pkg) = workspace.packages.iter().find(|p| p.name == pkg_name) {
+            return pkg.path.join("CHANGELOG.md");
+        }
     }
 
     workspace.root.join(golden_name)
@@ -223,4 +263,37 @@ fn golden_root_changelog() {
 #[test]
 fn golden_multiple_changelogs_per_crate() {
     run_golden_test("multiple-changelogs-per-crate");
+}
+
+// ── Edge-case tests ─────────────────────────────────────────────────
+
+#[test]
+fn golden_empty_changelog() {
+    run_golden_test("empty-changelog");
+}
+
+#[test]
+fn golden_all_ignored() {
+    run_golden_test("all-ignored");
+}
+
+#[test]
+fn golden_cyclic_deps() {
+    run_golden_test("cyclic-deps");
+}
+
+#[test]
+fn golden_fixed_and_linked() {
+    run_golden_test("fixed-and-linked");
+}
+
+#[test]
+fn golden_invalid_frontmatter() {
+    let fixture = fixtures_root().join("invalid-frontmatter");
+    let changelog_dir = fixture.join("changelog");
+    let result = changelog_entry::read_all(&changelog_dir);
+    assert!(
+        result.is_err(),
+        "expected parse error for invalid frontmatter"
+    );
 }
