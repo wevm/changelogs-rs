@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use changelogs::changelog_entry;
 use changelogs::error::Error;
 use changelogs::workspace::Workspace;
@@ -15,8 +15,8 @@ pub fn run(
     base_ref: Option<String>,
     ecosystem: Option<Ecosystem>,
 ) -> Result<()> {
-    let workspace =
-        Workspace::discover_with_ecosystem(ecosystem).map_err(|_| Error::NotInWorkspace)?;
+    let workspace = Workspace::discover_with_ecosystem(ecosystem)
+        .context("could not detect workspace — specify ecosystem with: changelogs --ecosystem <rust|python>")?;
 
     if !workspace.is_initialized() {
         return Err(Error::NotInitialized.into());
