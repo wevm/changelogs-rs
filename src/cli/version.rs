@@ -11,8 +11,9 @@ use semver::Version;
 use std::collections::HashMap;
 
 pub fn run(ecosystem: Option<Ecosystem>) -> Result<()> {
-    let workspace = Workspace::discover_with_ecosystem(ecosystem)
-        .context("could not detect workspace — specify ecosystem with: changelogs --ecosystem <rust|python>")?;
+    let workspace = Workspace::discover_with_ecosystem(ecosystem).context(
+        "could not detect workspace — specify ecosystem with: changelogs --ecosystem <rust|python>",
+    )?;
 
     if !workspace.is_initialized() {
         return Err(Error::NotInitialized.into());
