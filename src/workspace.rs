@@ -55,10 +55,9 @@ impl Workspace {
             let manifest = current.join(manifest_name);
             if manifest.exists() {
                 if ecosystem == Ecosystem::Rust {
-                    if let Ok(content) = std::fs::read_to_string(&manifest) {
-                        if content.contains("[workspace]") {
-                            return Ok(current);
-                        }
+                    let content = std::fs::read_to_string(&manifest)?;
+                    if content.contains("[workspace]") {
+                        return Ok(current);
                     }
                 }
 
@@ -73,11 +72,10 @@ impl Workspace {
                 }
 
                 if ecosystem == Ecosystem::Rust {
-                    if let Ok(content) = std::fs::read_to_string(&parent_manifest) {
-                        if content.contains("[workspace]") {
-                            current = parent.unwrap().to_path_buf();
-                            continue;
-                        }
+                    let content = std::fs::read_to_string(&parent_manifest)?;
+                    if content.contains("[workspace]") {
+                        current = parent.unwrap().to_path_buf();
+                        continue;
                     }
                 }
 
