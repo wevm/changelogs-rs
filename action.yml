@@ -183,7 +183,8 @@ runs:
         if [ -n "${{ inputs.ecosystem }}" ]; then
           ECOSYSTEM_FLAG="--ecosystem ${{ inputs.ecosystem }}"
         fi
-        output=$(changelogs $ECOSYSTEM_FLAG publish 2>&1) || true
+        output=$(changelogs $ECOSYSTEM_FLAG publish 2>&1)
+        publish_exit=$?
         echo "$output"
         
         # Parse published packages from output (✓ = published, ⊘ = skipped/tags-only)
@@ -196,14 +197,19 @@ runs:
           echo "published=false" >> $GITHUB_OUTPUT
           echo "publishedPackages=[]" >> $GITHUB_OUTPUT
         fi
+        
+        if [ $publish_exit -ne 0 ]; then
+          echo "::error::Package publishing failed with exit code $publish_exit"
+          exit $publish_exit
+        fi
 
     - name: Push git tags
-      if: steps.check.outputs.hasChangelogs == 'false'
+      if: steps.check.outputs.hasChangelogs == 'false' && steps.publish.outcome == 'success'
       shell: bash
       run: git push --follow-tags
 
     - name: Create GitHub releases
-      if: steps.check.outputs.hasChangelogs == 'false'
+      if: steps.check.outputs.hasChangelogs == 'false' && steps.publish.outcome == 'success'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
