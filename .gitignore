@@ -1,1 +1,5 @@
-/target
+.env
+.vercel
+dist
+node_modules
+target
