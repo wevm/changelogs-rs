@@ -348,4 +348,167 @@ Fixed bug Y.
         let parts: Vec<_> = id.split('-').collect();
         assert_eq!(parts.len(), 3);
     }
+
+    #[test]
+    fn test_parse_empty_content() {
+        let err = parse("test-id", "").unwrap_err();
+        match err {
+            Error::ChangelogParse(id, msg) => {
+                assert_eq!(id, "test-id");
+                assert!(msg.contains("missing frontmatter"));
+            }
+            _ => panic!("expected ChangelogParse error"),
+        }
+    }
+
+    #[test]
+    fn test_parse_missing_frontmatter_close() {
+        let err = parse("test-id", "---\nfoo: bar\n").unwrap_err();
+        match err {
+            Error::ChangelogParse(id, msg) => {
+                assert_eq!(id, "test-id");
+                assert!(msg.contains("missing frontmatter end"));
+            }
+            _ => panic!("expected ChangelogParse error"),
+        }
+    }
+
+    #[test]
+    fn test_parse_non_string_yaml_values() {
+        let content = "---\nmy-crate: 123\n---\nsummary";
+        let result = parse("test-id", content);
+        assert!(result.is_ok());
+        let changelog = result.unwrap();
+        assert!(changelog.releases.is_empty());
+    }
+
+    #[test]
+    fn test_parse_with_commit_field() {
+        let content = "---\ncommit: abc123\nmy-crate: minor\n---\nsummary";
+        let changelog = parse("test-id", content).unwrap();
+        assert_eq!(changelog.commit, Some("abc123".to_string()));
+        assert_eq!(changelog.releases.len(), 1);
+        assert_eq!(changelog.releases[0].package, "my-crate");
+    }
+
+    #[test]
+    fn test_parse_no_releases() {
+        let content = "---\ncommit: abc123\n---\nsummary";
+        let changelog = parse("test-id", content).unwrap();
+        assert_eq!(changelog.commit, Some("abc123".to_string()));
+        assert!(changelog.releases.is_empty());
+    }
+
+    #[test]
+    fn test_extract_pr_number_squash_merge() {
+        assert_eq!(extract_pr_number("feat: add feature (#42)"), Some(42));
+    }
+
+    #[test]
+    fn test_extract_pr_number_merge_commit() {
+        assert_eq!(
+            extract_pr_number("Merge pull request (#123) from branch"),
+            Some(123)
+        );
+    }
+
+    #[test]
+    fn test_extract_pr_number_no_pr() {
+        assert_eq!(extract_pr_number("regular commit message"), None);
+    }
+
+    #[test]
+    fn test_extract_pr_number_multiple_takes_first() {
+        assert_eq!(extract_pr_number("fix (#1) and (#2)"), Some(1));
+    }
+
+    #[test]
+    fn test_read_all_multiple_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("beta-entry.md"),
+            "---\npkg-a: minor\n---\n\nBeta summary\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("alpha-entry.md"),
+            "---\npkg-b: patch\n---\n\nAlpha summary\n",
+        )
+        .unwrap();
+
+        let changelogs = read_all(dir.path()).unwrap();
+        assert_eq!(changelogs.len(), 2);
+        assert_eq!(changelogs[0].id, "alpha-entry");
+        assert_eq!(changelogs[1].id, "beta-entry");
+    }
+
+    #[test]
+    fn test_read_all_skips_readme() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("README.md"), "# Changelogs").unwrap();
+        std::fs::write(
+            dir.path().join("real-entry.md"),
+            "---\npkg: minor\n---\n\nReal entry\n",
+        )
+        .unwrap();
+
+        let changelogs = read_all(dir.path()).unwrap();
+        assert_eq!(changelogs.len(), 1);
+        assert_eq!(changelogs[0].id, "real-entry");
+    }
+
+    #[test]
+    fn test_read_all_empty_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let changelogs = read_all(dir.path()).unwrap();
+        assert!(changelogs.is_empty());
+    }
+
+    #[test]
+    fn test_read_all_nonexistent_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let nonexistent = dir.path().join("does-not-exist");
+        let changelogs = read_all(&nonexistent).unwrap();
+        assert!(changelogs.is_empty());
+    }
+
+    #[test]
+    fn test_write_and_read_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let changelog = Changelog {
+            id: "roundtrip-test".to_string(),
+            summary: "Roundtrip summary".to_string(),
+            releases: vec![Release {
+                package: "my-crate".to_string(),
+                bump: BumpType::Minor,
+            }],
+            commit: None,
+        };
+
+        write(dir.path(), &changelog).unwrap();
+        let changelogs = read_all(dir.path()).unwrap();
+        assert_eq!(changelogs.len(), 1);
+        assert_eq!(changelogs[0].id, "roundtrip-test");
+        assert_eq!(changelogs[0].summary, "Roundtrip summary");
+        assert_eq!(changelogs[0].releases.len(), 1);
+        assert_eq!(changelogs[0].releases[0].package, "my-crate");
+        assert_eq!(changelogs[0].releases[0].bump, BumpType::Minor);
+    }
+
+    #[test]
+    fn test_delete_existing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("to-delete.md");
+        std::fs::write(&path, "---\npkg: patch\n---\n\nDelete me\n").unwrap();
+        assert!(path.exists());
+
+        delete(dir.path(), "to-delete").unwrap();
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn test_delete_nonexistent() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(delete(dir.path(), "no-such-id").is_ok());
+    }
 }
