@@ -218,3 +218,150 @@ impl RustAdapter {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_read_version() {
+        let dir = TempDir::new().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        std::fs::write(&manifest, "[package]\nname = \"test\"\nversion = \"1.2.3\"\n").unwrap();
+
+        let version = RustAdapter::read_version(&manifest).unwrap();
+        assert_eq!(version, Version::new(1, 2, 3));
+    }
+
+    #[test]
+    #[should_panic(expected = "index not found")]
+    fn test_read_version_missing_version() {
+        let dir = TempDir::new().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        std::fs::write(&manifest, "[package]\nname = \"test\"\n").unwrap();
+
+        let _ = RustAdapter::read_version(&manifest);
+    }
+
+    #[test]
+    fn test_write_version() {
+        let dir = TempDir::new().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        std::fs::write(&manifest, "[package]\nname = \"test\"\nversion = \"1.0.0\"\n").unwrap();
+
+        RustAdapter::write_version(&manifest, &Version::new(2, 3, 4)).unwrap();
+
+        let version = RustAdapter::read_version(&manifest).unwrap();
+        assert_eq!(version, Version::new(2, 3, 4));
+    }
+
+    #[test]
+    fn test_write_version_preserves_other_fields() {
+        let dir = TempDir::new().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        let content = "\
+[package]\n\
+name = \"test\"\n\
+version = \"1.0.0\"\n\
+edition = \"2021\"\n\
+\n\
+[dependencies]\n\
+serde = \"1\"\n";
+        std::fs::write(&manifest, content).unwrap();
+
+        RustAdapter::write_version(&manifest, &Version::new(2, 0, 0)).unwrap();
+
+        let updated = std::fs::read_to_string(&manifest).unwrap();
+        assert!(updated.contains("name = \"test\""));
+        assert!(updated.contains("edition = \"2021\""));
+        assert!(updated.contains("serde = \"1\""));
+        assert!(updated.contains("version = \"2.0.0\""));
+    }
+
+    #[test]
+    fn test_update_dependency_version_regular_table() {
+        let dir = TempDir::new().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        let content = "\
+[package]\n\
+name = \"test\"\n\
+version = \"1.0.0\"\n\
+\n\
+[dependencies]\n\
+my-dep = { version = \"1.0.0\", features = [\"serde\"] }\n";
+        std::fs::write(&manifest, content).unwrap();
+
+        let modified =
+            RustAdapter::update_dependency_version(&manifest, "my-dep", &Version::new(2, 0, 0))
+                .unwrap();
+        assert!(modified);
+
+        let updated = std::fs::read_to_string(&manifest).unwrap();
+        assert!(updated.contains("version = \"2.0.0\""));
+        assert!(updated.contains("serde"));
+    }
+
+    #[test]
+    fn test_update_dependency_version_not_found() {
+        let dir = TempDir::new().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        let content = "\
+[package]\n\
+name = \"test\"\n\
+version = \"1.0.0\"\n\
+\n\
+[dependencies]\n\
+other-dep = \"1.0\"\n";
+        std::fs::write(&manifest, content).unwrap();
+
+        let modified =
+            RustAdapter::update_dependency_version(&manifest, "my-dep", &Version::new(2, 0, 0))
+                .unwrap();
+        assert!(!modified);
+    }
+
+    #[test]
+    fn test_update_dependency_in_dev_deps() {
+        let dir = TempDir::new().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        let content = "\
+[package]\n\
+name = \"test\"\n\
+version = \"1.0.0\"\n\
+\n\
+[dev-dependencies]\n\
+my-dep = { version = \"1.0.0\" }\n";
+        std::fs::write(&manifest, content).unwrap();
+
+        let modified =
+            RustAdapter::update_dependency_version(&manifest, "my-dep", &Version::new(3, 0, 0))
+                .unwrap();
+        assert!(modified);
+
+        let updated = std::fs::read_to_string(&manifest).unwrap();
+        assert!(updated.contains("version = \"3.0.0\""));
+    }
+
+    #[test]
+    fn test_update_dependency_in_workspace_deps() {
+        let dir = TempDir::new().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        let content = "\
+[package]\n\
+name = \"test\"\n\
+version = \"1.0.0\"\n\
+\n\
+[workspace.dependencies]\n\
+my-dep = { version = \"1.0.0\" }\n";
+        std::fs::write(&manifest, content).unwrap();
+
+        let modified =
+            RustAdapter::update_dependency_version(&manifest, "my-dep", &Version::new(4, 0, 0))
+                .unwrap();
+        assert!(modified);
+
+        let updated = std::fs::read_to_string(&manifest).unwrap();
+        assert!(updated.contains("version = \"4.0.0\""));
+    }
+}
