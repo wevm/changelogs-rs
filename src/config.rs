@@ -148,3 +148,85 @@ ignore = []
 "#
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_load_missing_file_returns_default() {
+        let dir = TempDir::new().unwrap();
+        let config = Config::load(dir.path()).unwrap();
+
+        assert_eq!(config.dependent_bump, DependentBump::Patch);
+        assert_eq!(config.changelog.format, ChangelogFormat::PerCrate);
+        assert!(config.ecosystem.is_none());
+        assert!(config.fixed.is_empty());
+        assert!(config.linked.is_empty());
+        assert!(config.ignore.is_empty());
+    }
+
+    #[test]
+    fn test_save_then_load_roundtrip() {
+        let dir = TempDir::new().unwrap();
+
+        let config = Config {
+            ecosystem: None,
+            dependent_bump: DependentBump::Minor,
+            changelog: ChangelogConfig {
+                format: ChangelogFormat::Root,
+            },
+            fixed: vec![FixedGroup {
+                members: vec!["a".into(), "b".into()],
+            }],
+            linked: vec![LinkedGroup {
+                members: vec!["x".into(), "y".into()],
+            }],
+            ignore: vec!["foo".into()],
+            ai: AiConfig {
+                command: Some("test-cmd".into()),
+            },
+        };
+
+        config.save(dir.path()).unwrap();
+        let loaded = Config::load(dir.path()).unwrap();
+
+        assert_eq!(loaded.dependent_bump, DependentBump::Minor);
+        assert_eq!(loaded.changelog.format, ChangelogFormat::Root);
+        assert_eq!(loaded.fixed.len(), 1);
+        assert_eq!(loaded.fixed[0].members, vec!["a", "b"]);
+        assert_eq!(loaded.linked.len(), 1);
+        assert_eq!(loaded.linked[0].members, vec!["x", "y"]);
+        assert_eq!(loaded.ignore, vec!["foo"]);
+        assert_eq!(loaded.ai.command.as_deref(), Some("test-cmd"));
+    }
+
+    #[test]
+    fn test_malformed_toml_produces_error() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("config.toml"), "{{not valid toml").unwrap();
+
+        let result = Config::load(dir.path());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_partial_config_fills_defaults() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join("config.toml"),
+            "dependent_bump = \"minor\"\n",
+        )
+        .unwrap();
+
+        let config = Config::load(dir.path()).unwrap();
+
+        assert_eq!(config.dependent_bump, DependentBump::Minor);
+        assert_eq!(config.changelog.format, ChangelogFormat::PerCrate);
+        assert!(config.ecosystem.is_none());
+        assert!(config.fixed.is_empty());
+        assert!(config.linked.is_empty());
+        assert!(config.ignore.is_empty());
+    }
+}

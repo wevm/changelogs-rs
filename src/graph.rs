@@ -108,4 +108,126 @@ mod tests {
         assert!(dependents.contains(&"b".to_string()));
         assert!(dependents.contains(&"c".to_string()));
     }
+
+    #[test]
+    fn test_all_dependents_transitive_chain() {
+        let mut graph = DiGraph::new();
+        let a = graph.add_node("a".to_string());
+        let b = graph.add_node("b".to_string());
+        let c = graph.add_node("c".to_string());
+
+        graph.add_edge(b, a, ());
+        graph.add_edge(c, b, ());
+
+        let mut node_indices = HashMap::new();
+        node_indices.insert("a".to_string(), a);
+        node_indices.insert("b".to_string(), b);
+        node_indices.insert("c".to_string(), c);
+
+        let dep_graph = DependencyGraph {
+            graph,
+            node_indices,
+        };
+
+        let all = dep_graph.all_dependents("a");
+        assert_eq!(all.len(), 2);
+        assert!(all.contains(&"b".to_string()));
+        assert!(all.contains(&"c".to_string()));
+    }
+
+    #[test]
+    fn test_all_dependents_diamond() {
+        let mut graph = DiGraph::new();
+        let a = graph.add_node("a".to_string());
+        let b = graph.add_node("b".to_string());
+        let c = graph.add_node("c".to_string());
+        let d = graph.add_node("d".to_string());
+
+        graph.add_edge(b, a, ());
+        graph.add_edge(c, a, ());
+        graph.add_edge(d, b, ());
+        graph.add_edge(d, c, ());
+
+        let mut node_indices = HashMap::new();
+        node_indices.insert("a".to_string(), a);
+        node_indices.insert("b".to_string(), b);
+        node_indices.insert("c".to_string(), c);
+        node_indices.insert("d".to_string(), d);
+
+        let dep_graph = DependencyGraph {
+            graph,
+            node_indices,
+        };
+
+        let all = dep_graph.all_dependents("a");
+        assert_eq!(all.len(), 3);
+        assert!(all.contains(&"b".to_string()));
+        assert!(all.contains(&"c".to_string()));
+        assert!(all.contains(&"d".to_string()));
+    }
+
+    #[test]
+    fn test_dependencies() {
+        let mut graph = DiGraph::new();
+        let a = graph.add_node("a".to_string());
+        let b = graph.add_node("b".to_string());
+        let c = graph.add_node("c".to_string());
+
+        graph.add_edge(b, a, ());
+        graph.add_edge(c, a, ());
+
+        let mut node_indices = HashMap::new();
+        node_indices.insert("a".to_string(), a);
+        node_indices.insert("b".to_string(), b);
+        node_indices.insert("c".to_string(), c);
+
+        let dep_graph = DependencyGraph {
+            graph,
+            node_indices,
+        };
+
+        let deps = dep_graph.dependencies("b");
+        assert_eq!(deps, vec!["a".to_string()]);
+
+        let deps = dep_graph.dependencies("a");
+        assert!(deps.is_empty());
+    }
+
+    #[test]
+    fn test_nonexistent_package() {
+        let mut graph = DiGraph::new();
+        let a = graph.add_node("a".to_string());
+
+        let mut node_indices = HashMap::new();
+        node_indices.insert("a".to_string(), a);
+
+        let dep_graph = DependencyGraph {
+            graph,
+            node_indices,
+        };
+
+        assert!(dep_graph.dependents("nonexistent").is_empty());
+        assert!(dep_graph.all_dependents("nonexistent").is_empty());
+        assert!(dep_graph.dependencies("nonexistent").is_empty());
+    }
+
+    #[test]
+    fn test_no_dependents() {
+        let mut graph = DiGraph::new();
+        let a = graph.add_node("a".to_string());
+        let b = graph.add_node("b".to_string());
+
+        graph.add_edge(b, a, ());
+
+        let mut node_indices = HashMap::new();
+        node_indices.insert("a".to_string(), a);
+        node_indices.insert("b".to_string(), b);
+
+        let dep_graph = DependencyGraph {
+            graph,
+            node_indices,
+        };
+
+        assert!(dep_graph.dependents("b").is_empty());
+    }
 }

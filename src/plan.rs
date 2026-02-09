@@ -150,7 +150,6 @@ mod tests {
     use crate::Release;
     use semver::Version;
 
-    #[allow(dead_code)]
     fn mock_package(name: &str, version: &str, deps: Vec<&str>) -> crate::ecosystems::Package {
         crate::ecosystems::Package {
             name: name.to_string(),
@@ -200,5 +199,272 @@ mod tests {
             });
 
         assert_eq!(bump_map.get("foo"), Some(&BumpType::Minor));
+    }
+
+    fn mock_workspace(packages: Vec<crate::ecosystems::Package>) -> Workspace {
+        Workspace {
+            root: std::path::PathBuf::from("/tmp/test"),
+            changelog_dir: std::path::PathBuf::from("/tmp/test/.changelog"),
+            packages,
+            ecosystem: crate::ecosystems::Ecosystem::Rust,
+        }
+    }
+
+    fn make_changelog(id: &str, releases: Vec<Release>) -> Changelog {
+        Changelog {
+            id: id.to_string(),
+            summary: format!("changelog {}", id),
+            releases,
+            commit: None,
+        }
+    }
+
+    #[test]
+    fn test_assemble_simple_bump() {
+        let ws = mock_workspace(vec![mock_package("foo", "1.0.0", vec![])]);
+        let changelogs = vec![make_changelog(
+            "cl1",
+            vec![Release {
+                package: "foo".to_string(),
+                bump: BumpType::Minor,
+            }],
+        )];
+        let config = Config::default();
+
+        let plan = assemble(&ws, changelogs, &config);
+
+        assert_eq!(plan.releases.len(), 1);
+        assert_eq!(plan.releases[0].name, "foo");
+        assert_eq!(plan.releases[0].bump, BumpType::Minor);
+        assert_eq!(plan.releases[0].old_version, Version::new(1, 0, 0));
+        assert_eq!(plan.releases[0].new_version, Version::new(1, 1, 0));
+    }
+
+    #[test]
+    fn test_assemble_dependent_bump_patch() {
+        let ws = mock_workspace(vec![
+            mock_package("a", "1.0.0", vec![]),
+            mock_package("b", "2.0.0", vec!["a"]),
+        ]);
+        let changelogs = vec![make_changelog(
+            "cl1",
+            vec![Release {
+                package: "a".to_string(),
+                bump: BumpType::Minor,
+            }],
+        )];
+        let config = Config::default();
+
+        let plan = assemble(&ws, changelogs, &config);
+
+        assert_eq!(plan.releases.len(), 2);
+        let a = plan.releases.iter().find(|r| r.name == "a").unwrap();
+        let b = plan.releases.iter().find(|r| r.name == "b").unwrap();
+        assert_eq!(a.bump, BumpType::Minor);
+        assert_eq!(a.new_version, Version::new(1, 1, 0));
+        assert_eq!(b.bump, BumpType::Patch);
+        assert_eq!(b.new_version, Version::new(2, 0, 1));
+    }
+
+    #[test]
+    fn test_assemble_dependent_bump_minor() {
+        let ws = mock_workspace(vec![
+            mock_package("a", "1.0.0", vec![]),
+            mock_package("b", "2.0.0", vec!["a"]),
+        ]);
+        let changelogs = vec![make_changelog(
+            "cl1",
+            vec![Release {
+                package: "a".to_string(),
+                bump: BumpType::Minor,
+            }],
+        )];
+        let config = Config {
+            dependent_bump: DependentBump::Minor,
+            ..Config::default()
+        };
+
+        let plan = assemble(&ws, changelogs, &config);
+
+        let b = plan.releases.iter().find(|r| r.name == "b").unwrap();
+        assert_eq!(b.bump, BumpType::Minor);
+        assert_eq!(b.new_version, Version::new(2, 1, 0));
+    }
+
+    #[test]
+    fn test_assemble_dependent_bump_none() {
+        let ws = mock_workspace(vec![
+            mock_package("a", "1.0.0", vec![]),
+            mock_package("b", "2.0.0", vec!["a"]),
+        ]);
+        let changelogs = vec![make_changelog(
+            "cl1",
+            vec![Release {
+                package: "a".to_string(),
+                bump: BumpType::Minor,
+            }],
+        )];
+        let config = Config {
+            dependent_bump: DependentBump::None,
+            ..Config::default()
+        };
+
+        let plan = assemble(&ws, changelogs, &config);
+
+        assert_eq!(plan.releases.len(), 1);
+        assert_eq!(plan.releases[0].name, "a");
+    }
+
+    #[test]
+    fn test_assemble_fixed_group() {
+        let ws = mock_workspace(vec![
+            mock_package("x", "1.0.0", vec![]),
+            mock_package("y", "1.0.0", vec![]),
+        ]);
+        let changelogs = vec![make_changelog(
+            "cl1",
+            vec![Release {
+                package: "x".to_string(),
+                bump: BumpType::Minor,
+            }],
+        )];
+        let config = Config {
+            dependent_bump: DependentBump::None,
+            fixed: vec![crate::config::FixedGroup {
+                members: vec!["x".to_string(), "y".to_string()],
+            }],
+            ..Config::default()
+        };
+
+        let plan = assemble(&ws, changelogs, &config);
+
+        assert_eq!(plan.releases.len(), 2);
+        let x = plan.releases.iter().find(|r| r.name == "x").unwrap();
+        let y = plan.releases.iter().find(|r| r.name == "y").unwrap();
+        assert_eq!(x.bump, BumpType::Minor);
+        assert_eq!(y.bump, BumpType::Minor);
+    }
+
+    #[test]
+    fn test_assemble_linked_group_both_releasing() {
+        let ws = mock_workspace(vec![
+            mock_package("p", "1.0.0", vec![]),
+            mock_package("q", "1.0.0", vec![]),
+        ]);
+        let changelogs = vec![
+            make_changelog(
+                "cl1",
+                vec![Release {
+                    package: "p".to_string(),
+                    bump: BumpType::Patch,
+                }],
+            ),
+            make_changelog(
+                "cl2",
+                vec![Release {
+                    package: "q".to_string(),
+                    bump: BumpType::Minor,
+                }],
+            ),
+        ];
+        let config = Config {
+            dependent_bump: DependentBump::None,
+            linked: vec![crate::config::LinkedGroup {
+                members: vec!["p".to_string(), "q".to_string()],
+            }],
+            ..Config::default()
+        };
+
+        let plan = assemble(&ws, changelogs, &config);
+
+        assert_eq!(plan.releases.len(), 2);
+        let p = plan.releases.iter().find(|r| r.name == "p").unwrap();
+        let q = plan.releases.iter().find(|r| r.name == "q").unwrap();
+        assert_eq!(p.bump, BumpType::Minor);
+        assert_eq!(q.bump, BumpType::Minor);
+    }
+
+    #[test]
+    fn test_assemble_linked_group_only_one() {
+        let ws = mock_workspace(vec![
+            mock_package("p", "1.0.0", vec![]),
+            mock_package("q", "1.0.0", vec![]),
+        ]);
+        let changelogs = vec![make_changelog(
+            "cl1",
+            vec![Release {
+                package: "p".to_string(),
+                bump: BumpType::Patch,
+            }],
+        )];
+        let config = Config {
+            dependent_bump: DependentBump::None,
+            linked: vec![crate::config::LinkedGroup {
+                members: vec!["p".to_string(), "q".to_string()],
+            }],
+            ..Config::default()
+        };
+
+        let plan = assemble(&ws, changelogs, &config);
+
+        assert_eq!(plan.releases.len(), 1);
+        assert_eq!(plan.releases[0].name, "p");
+        assert_eq!(plan.releases[0].bump, BumpType::Patch);
+    }
+
+    #[test]
+    fn test_assemble_ignore_package() {
+        let ws = mock_workspace(vec![
+            mock_package("foo", "1.0.0", vec![]),
+            mock_package("bar", "1.0.0", vec![]),
+        ]);
+        let changelogs = vec![make_changelog(
+            "cl1",
+            vec![
+                Release {
+                    package: "foo".to_string(),
+                    bump: BumpType::Minor,
+                },
+                Release {
+                    package: "bar".to_string(),
+                    bump: BumpType::Patch,
+                },
+            ],
+        )];
+        let config = Config {
+            ignore: vec!["bar".to_string()],
+            ..Config::default()
+        };
+
+        let plan = assemble(&ws, changelogs, &config);
+
+        assert_eq!(plan.releases.len(), 1);
+        assert_eq!(plan.releases[0].name, "foo");
+        assert!(plan.releases.iter().all(|r| r.name != "bar"));
+    }
+
+    #[test]
+    fn test_assemble_ignore_excludes_from_dependent_bump() {
+        let ws = mock_workspace(vec![
+            mock_package("a", "1.0.0", vec![]),
+            mock_package("b", "2.0.0", vec!["a"]),
+        ]);
+        let changelogs = vec![make_changelog(
+            "cl1",
+            vec![Release {
+                package: "a".to_string(),
+                bump: BumpType::Minor,
+            }],
+        )];
+        let config = Config {
+            ignore: vec!["b".to_string()],
+            ..Config::default()
+        };
+
+        let plan = assemble(&ws, changelogs, &config);
+
+        assert_eq!(plan.releases.len(), 1);
+        assert_eq!(plan.releases[0].name, "a");
+        assert!(plan.releases.iter().all(|r| r.name != "b"));
     }
 }
