@@ -1,7 +1,0 @@
-[[packages]]
-name = "pkg-a"
-version = "1.0.0"
-
-[[packages]]
-name = "pkg-b"
-version = "1.0.0"

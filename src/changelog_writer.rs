@@ -260,9 +260,9 @@ mod tests {
         );
     }
 
+    use crate::BumpType;
     use crate::changelog_entry::{Changelog, Release};
     use crate::plan::PackageRelease;
-    use crate::BumpType;
     use semver::Version;
 
     #[test]

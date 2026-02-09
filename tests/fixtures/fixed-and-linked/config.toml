@@ -1,7 +1,0 @@
-dependent_bump = "none"
-
-[[fixed]]
-members = ["core", "core-derive"]
-
-[[linked]]
-members = ["sdk", "sdk-utils"]

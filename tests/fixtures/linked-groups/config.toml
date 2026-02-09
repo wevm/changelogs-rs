@@ -1,4 +1,0 @@
-dependent_bump = "none"
-
-[[linked]]
-members = ["sdk-core", "sdk-macros"]

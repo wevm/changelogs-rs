@@ -1,7 +1,0 @@
-[[packages]]
-name = "internal-a"
-version = "1.0.0"
-
-[[packages]]
-name = "internal-b"
-version = "2.0.0"
