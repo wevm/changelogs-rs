@@ -47,8 +47,6 @@ pub fn run(dry_run: bool, ecosystem: Option<Ecosystem>) -> Result<()> {
 
     println!("{} Updating versions...\n", style("→").blue().bold());
 
-    let mut version_updates: HashMap<String, Version> = HashMap::new();
-
     println!("{} Release plan:\n", style("→").blue().bold());
 
     for release in &release_plan.releases {
