@@ -22,10 +22,10 @@ jobs:
       - name: Install Claude CLI
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Generate changelog if missing
-        uses: ./gen
+      - name: Check changelogs
+        uses: ./check
+        timeout-minutes: 5
         with:
-          ai: 'claude -p'
-          conventional-commit: true
+          ai: 'claude -p --dangerously-skip-permissions'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

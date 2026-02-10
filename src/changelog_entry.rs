@@ -121,48 +121,104 @@ pub struct CommitInfo {
 pub fn get_commit_info(_changelog_dir: &Path, id: &str) -> Option<CommitInfo> {
     let file_path = format!(".changelog/{}.md", id);
 
+    // Step 1: Find the commit that originally added the file
+    let add_commit = find_add_commit(&file_path)?;
+
+    // Step 2: Check if the add commit itself has a PR number (squash merge case)
+    // For squash merges, the commit message contains "(#123)"
+    let output = std::process::Command::new("git")
+        .args(["log", "--format=%s", "-1", &add_commit])
+        .output()
+        .ok()?;
+
+    let commit_message = String::from_utf8_lossy(&output.stdout);
+    let authors = get_commit_authors(&file_path, &add_commit);
+
+    if let Some(pr_number) = extract_pr_number(commit_message.trim()) {
+        return Some(CommitInfo {
+            pr_number: Some(pr_number),
+            commit_sha: add_commit,
+            authors,
+        });
+    }
+
+    // Step 3: Look for merge commit (traditional merge case)
+    // Find the first merge commit that contains the add commit
+    let merge_output = std::process::Command::new("git")
+        .args([
+            "log",
+            "--merges",
+            "--ancestry-path",
+            "--reverse",
+            "--format=%H %s",
+            &format!("{}..HEAD", add_commit),
+        ])
+        .output()
+        .ok()?;
+
+    let merge_stdout = String::from_utf8_lossy(&merge_output.stdout);
+
+    if let Some(merge_line) = merge_stdout.lines().next() {
+        let merge_line = merge_line.trim();
+        if !merge_line.is_empty() {
+            let parts: Vec<&str> = merge_line.splitn(2, ' ').collect();
+            if parts.len() >= 2 {
+                let commit_sha = parts[0].to_string();
+                let commit_message = parts[1];
+                if let Some(pr_number) = extract_pr_number(commit_message) {
+                    return Some(CommitInfo {
+                        pr_number: Some(pr_number),
+                        commit_sha,
+                        authors,
+                    });
+                }
+            }
+        }
+    }
+
+    // Fallback: no PR number found
+    Some(CommitInfo {
+        pr_number: None,
+        commit_sha: add_commit,
+        authors,
+    })
+}
+
+fn find_add_commit(file_path: &str) -> Option<String> {
     let output = std::process::Command::new("git")
         .args([
             "log",
             "--follow",
             "--diff-filter=A",
-            "--format=%H %s",
+            "--format=%H",
             "-1",
             "--",
-            &file_path,
+            file_path,
         ])
         .output()
         .ok()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let line = stdout.trim();
-
-    if line.is_empty() {
-        return None;
+    let sha = stdout.trim();
+    if sha.is_empty() {
+        None
+    } else {
+        Some(sha.to_string())
     }
-
-    let parts: Vec<&str> = line.splitn(2, ' ').collect();
-    if parts.len() < 2 {
-        return None;
-    }
-
-    let commit_sha = parts[0].to_string();
-    let commit_message = parts[1];
-
-    let pr_number = extract_pr_number(commit_message);
-
-    let authors = get_commit_authors(&file_path);
-
-    Some(CommitInfo {
-        pr_number,
-        commit_sha,
-        authors,
-    })
 }
 
-fn get_commit_authors(file_path: &str) -> Vec<String> {
+fn get_commit_authors(file_path: &str, add_commit: &str) -> Vec<String> {
+    // Get authors from the add commit and any commits that touched the file
+    // up to that point (for PRs with multiple commits before squash/merge)
     let output = std::process::Command::new("git")
-        .args(["log", "--follow", "--format=%aN", "--", file_path])
+        .args([
+            "log",
+            "--follow",
+            "--format=%aN",
+            &format!("{}^..{}", add_commit, add_commit),
+            "--",
+            file_path,
+        ])
         .output()
         .ok();
 
@@ -176,6 +232,22 @@ fn get_commit_authors(file_path: &str) -> Vec<String> {
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect();
+
+    // If no authors found with range, try just the add commit
+    if authors.is_empty() {
+        let fallback = std::process::Command::new("git")
+            .args(["log", "--format=%aN", "-1", add_commit])
+            .output()
+            .ok();
+
+        if let Some(fb_output) = fallback {
+            let fb_stdout = String::from_utf8_lossy(&fb_output.stdout);
+            let author = fb_stdout.trim();
+            if !author.is_empty() {
+                authors.push(author.to_string());
+            }
+        }
+    }
 
     authors.sort();
     authors.dedup();
