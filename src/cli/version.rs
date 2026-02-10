@@ -10,7 +10,7 @@ use console::style;
 use semver::Version;
 use std::collections::HashMap;
 
-pub fn run(ecosystem: Option<Ecosystem>) -> Result<()> {
+pub fn run(dry_run: bool, ecosystem: Option<Ecosystem>) -> Result<()> {
     let workspace =
         Workspace::discover_with_ecosystem(ecosystem).map_err(|_| Error::NotInWorkspace)?;
 
@@ -34,14 +34,9 @@ pub fn run(ecosystem: Option<Ecosystem>) -> Result<()> {
         return Ok(());
     }
 
-    println!("{} Updating versions...\n", style("→").blue().bold());
-
-    let mut version_updates: HashMap<String, Version> = HashMap::new();
+    println!("{} Release plan:\n", style("→").blue().bold());
 
     for release in &release_plan.releases {
-        workspace.update_version(&release.name, &release.new_version)?;
-        version_updates.insert(release.name.clone(), release.new_version.clone());
-
         println!(
             "  {} {} {} → {}",
             style("✓").green(),
@@ -51,9 +46,25 @@ pub fn run(ecosystem: Option<Ecosystem>) -> Result<()> {
         );
     }
 
+    if dry_run {
+        println!(
+            "\n{} {} package(s) would be updated (dry run — no files changed)",
+            style("ℹ").blue().bold(),
+            release_plan.releases.len()
+        );
+        return Ok(());
+    }
+
+    println!("\n{} Updating versions...\n", style("→").blue().bold());
+
+    let mut version_updates: HashMap<String, Version> = HashMap::new();
+    for release in &release_plan.releases {
+        workspace.update_version(&release.name, &release.new_version)?;
+        version_updates.insert(release.name.clone(), release.new_version.clone());
+    }
     workspace.update_dependency_versions(&version_updates)?;
 
-    println!("\n{} Updating changelogs...\n", style("→").blue().bold());
+    println!("{} Updating changelogs...\n", style("→").blue().bold());
 
     changelog_writer::write_changelogs(
         &workspace,
