@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 (2026-02-10)
+
+### Patch Changes
+
+- Truncated AI diff to 32KB to prevent "Prompt is too long" errors with AI commands that have smaller context windows. (by @jxom, [c3a9576](https://github.com/wevm/changelogs/commit/c3a9576))
+
 ## 0.6.0 (2026-02-04)
 
 ### Minor Changes
