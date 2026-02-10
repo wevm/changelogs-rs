@@ -233,6 +233,19 @@ fn run_ai_generation(
 
     let package_names = workspace.package_names().join(", ");
 
+    const MAX_DIFF_BYTES: usize = 32_000;
+    let diff_to_use = if diff_to_use.len() > MAX_DIFF_BYTES {
+        let truncated = &diff_to_use[..diff_to_use.floor_char_boundary(MAX_DIFF_BYTES)];
+        format!(
+            "{}\n\n[diff truncated — showing first {}KB of {}KB]",
+            truncated,
+            MAX_DIFF_BYTES / 1000,
+            diff_to_use.len() / 1000,
+        )
+    } else {
+        diff_to_use
+    };
+
     let template = instructions.unwrap_or(DEFAULT_INSTRUCTIONS);
     let prompt = template
         .replace("{packages}", &package_names)
