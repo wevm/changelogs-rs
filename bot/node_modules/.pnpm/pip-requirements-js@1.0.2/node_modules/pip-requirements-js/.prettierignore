@@ -1,4 +1,0 @@
-dist/
-src/*.ohm-bundle.*
-*.md
-pnpm-lock.yaml
