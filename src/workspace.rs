@@ -227,7 +227,10 @@ mod tests {
     #[test]
     fn test_changelog_dir() {
         let ws = make_workspace(PathBuf::from("/tmp/myproject"), vec![]);
-        assert_eq!(ws.changelog_dir(), PathBuf::from("/tmp/myproject/.changelog"));
+        assert_eq!(
+            ws.changelog_dir(),
+            PathBuf::from("/tmp/myproject/.changelog")
+        );
     }
 
     #[test]

@@ -228,7 +228,11 @@ mod tests {
     fn test_read_version() {
         let dir = TempDir::new().unwrap();
         let manifest = dir.path().join("Cargo.toml");
-        std::fs::write(&manifest, "[package]\nname = \"test\"\nversion = \"1.2.3\"\n").unwrap();
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"test\"\nversion = \"1.2.3\"\n",
+        )
+        .unwrap();
 
         let version = RustAdapter::read_version(&manifest).unwrap();
         assert_eq!(version, Version::new(1, 2, 3));
@@ -248,7 +252,11 @@ mod tests {
     fn test_write_version() {
         let dir = TempDir::new().unwrap();
         let manifest = dir.path().join("Cargo.toml");
-        std::fs::write(&manifest, "[package]\nname = \"test\"\nversion = \"1.0.0\"\n").unwrap();
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"test\"\nversion = \"1.0.0\"\n",
+        )
+        .unwrap();
 
         RustAdapter::write_version(&manifest, &Version::new(2, 3, 4)).unwrap();
 
