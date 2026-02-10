@@ -1,0 +1,15 @@
+[[packages]]
+name = "core"
+version = "1.0.0"
+
+[[packages]]
+name = "core-derive"
+version = "1.0.0"
+
+[[packages]]
+name = "sdk"
+version = "2.0.0"
+
+[[packages]]
+name = "sdk-utils"
+version = "2.0.0"

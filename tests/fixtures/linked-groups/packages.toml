@@ -1,0 +1,7 @@
+[[packages]]
+name = "sdk-core"
+version = "1.0.0"
+
+[[packages]]
+name = "sdk-macros"
+version = "1.0.0"

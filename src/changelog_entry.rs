@@ -285,6 +285,7 @@ pub fn read_all(changelog_dir: &Path) -> Result<Vec<Changelog>> {
         }
     }
 
+    changelogs.sort_by(|a, b| a.id.cmp(&b.id));
     Ok(changelogs)
 }
 
