@@ -152,3 +152,137 @@ impl Workspace {
         ecosystems::tag_name(self.ecosystem, pkg)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ecosystems::Package;
+    use tempfile::TempDir;
+
+    fn make_package(name: &str) -> Package {
+        Package {
+            name: name.to_string(),
+            version: Version::new(1, 0, 0),
+            path: PathBuf::from(format!("/fake/{name}")),
+            manifest_path: PathBuf::from(format!("/fake/{name}/Cargo.toml")),
+            dependencies: vec![],
+        }
+    }
+
+    fn make_workspace(root: PathBuf, packages: Vec<Package>) -> Workspace {
+        let changelog_dir = root.join(".changelog");
+        Workspace {
+            root,
+            changelog_dir,
+            packages,
+            ecosystem: Ecosystem::Rust,
+        }
+    }
+
+    #[test]
+    fn test_get_package() {
+        let ws = make_workspace(
+            PathBuf::from("/tmp/proj"),
+            vec![make_package("foo"), make_package("bar")],
+        );
+
+        let pkg = ws.get_package("foo").unwrap();
+        assert_eq!(pkg.name, "foo");
+
+        assert!(ws.get_package("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_package_names() {
+        let ws = make_workspace(
+            PathBuf::from("/tmp/proj"),
+            vec![
+                make_package("alpha"),
+                make_package("beta"),
+                make_package("gamma"),
+            ],
+        );
+
+        let names = ws.package_names();
+        assert_eq!(names, vec!["alpha", "beta", "gamma"]);
+    }
+
+    #[test]
+    fn test_is_initialized_true() {
+        let dir = TempDir::new().unwrap();
+        std::fs::create_dir(dir.path().join(".changelog")).unwrap();
+        let ws = make_workspace(dir.path().to_path_buf(), vec![]);
+
+        assert!(ws.is_initialized());
+    }
+
+    #[test]
+    fn test_is_initialized_false() {
+        let dir = TempDir::new().unwrap();
+        let ws = make_workspace(dir.path().to_path_buf(), vec![]);
+
+        assert!(!ws.is_initialized());
+    }
+
+    #[test]
+    fn test_changelog_dir() {
+        let ws = make_workspace(PathBuf::from("/tmp/myproject"), vec![]);
+        assert_eq!(ws.changelog_dir(), PathBuf::from("/tmp/myproject/.changelog"));
+    }
+
+    #[test]
+    fn test_find_root_rust_workspace() {
+        let dir = TempDir::new().unwrap();
+        let root = dir.path();
+
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[workspace]\nmembers = [\"foo\"]\n",
+        )
+        .unwrap();
+
+        let crate_dir = root.join("foo");
+        std::fs::create_dir_all(&crate_dir).unwrap();
+        std::fs::write(
+            crate_dir.join("Cargo.toml"),
+            "[package]\nname = \"foo\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+
+        let found = Workspace::find_root(&crate_dir, Ecosystem::Rust).unwrap();
+        assert_eq!(found, root);
+    }
+
+    #[test]
+    fn test_find_root_rust_no_workspace() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname = \"solo\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+
+        let found = Workspace::find_root(dir.path(), Ecosystem::Rust).unwrap();
+        assert_eq!(found, dir.path());
+    }
+
+    #[test]
+    fn test_find_root_python() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join("pyproject.toml"),
+            "[project]\nname = \"mypy\"\nversion = \"1.0.0\"\n",
+        )
+        .unwrap();
+
+        let found = Workspace::find_root(dir.path(), Ecosystem::Python).unwrap();
+        assert_eq!(found, dir.path());
+    }
+
+    #[test]
+    fn test_find_root_not_found() {
+        let dir = TempDir::new().unwrap();
+        let result = Workspace::find_root(dir.path(), Ecosystem::Rust);
+        assert!(result.is_err());
+    }
+}

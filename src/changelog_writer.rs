@@ -186,6 +186,255 @@ pub fn update_changelog(path: &Path, new_entry: &str) -> Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_update_empty_file() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("CHANGELOG.md");
+        std::fs::write(&path, "").unwrap();
+
+        update_changelog(&path, "## 1.0.0\n\n- Initial release\n\n").unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(content, "# Changelog\n\n## 1.0.0\n\n- Initial release\n\n");
+    }
+
+    #[test]
+    fn test_update_nonexistent_file() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("CHANGELOG.md");
+
+        update_changelog(&path, "## 1.0.0\n\n- First\n\n").unwrap();
+
+        assert!(path.exists());
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(content, "# Changelog\n\n## 1.0.0\n\n- First\n\n");
+    }
+
+    #[test]
+    fn test_update_with_existing_header() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("CHANGELOG.md");
+        std::fs::write(&path, "# Changelog\n\nold content\n").unwrap();
+
+        update_changelog(&path, "## 2.0.0\n\n- New stuff\n\n").unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            content,
+            "# Changelog\n\n## 2.0.0\n\n- New stuff\n\nold content\n"
+        );
+    }
+
+    #[test]
+    fn test_update_without_header() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("CHANGELOG.md");
+        std::fs::write(&path, "some existing content\n").unwrap();
+
+        update_changelog(&path, "## 1.0.0\n\n- Entry\n\n").unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            content,
+            "# Changelog\n\n## 1.0.0\n\n- Entry\n\nsome existing content\n"
+        );
+    }
+
+    #[test]
+    fn test_multiple_sequential_updates() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("CHANGELOG.md");
+
+        update_changelog(&path, "## 1.0.0\n\n- First release\n\n").unwrap();
+        update_changelog(&path, "## 2.0.0\n\n- Second release\n\n").unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            content,
+            "# Changelog\n\n## 2.0.0\n\n- Second release\n\n## 1.0.0\n\n- First release\n\n"
+        );
+    }
+
+    use crate::changelog_entry::{Changelog, Release};
+    use crate::plan::PackageRelease;
+    use crate::BumpType;
+    use semver::Version;
+
+    #[test]
+    fn test_generate_entry_single_patch() {
+        let dir = TempDir::new().unwrap();
+        let release = PackageRelease {
+            name: "foo".to_string(),
+            bump: BumpType::Patch,
+            old_version: Version::new(1, 0, 0),
+            new_version: Version::new(1, 0, 1),
+            changelog_ids: vec!["change-1".to_string()],
+        };
+        let changelogs = vec![Changelog {
+            id: "change-1".to_string(),
+            summary: "fix a bug".to_string(),
+            releases: vec![Release {
+                package: "foo".to_string(),
+                bump: BumpType::Patch,
+            }],
+            commit: None,
+        }];
+
+        let output = generate_entry(&release, &changelogs, dir.path());
+
+        assert!(output.contains("## 1.0.1 ("));
+        assert!(output.contains("### Patch Changes"));
+        assert!(output.contains("fix a bug"));
+    }
+
+    #[test]
+    fn test_generate_entry_multiple_bump_types() {
+        let dir = TempDir::new().unwrap();
+        let release = PackageRelease {
+            name: "foo".to_string(),
+            bump: BumpType::Major,
+            old_version: Version::new(1, 0, 0),
+            new_version: Version::new(2, 0, 0),
+            changelog_ids: vec![
+                "c-major".to_string(),
+                "c-minor".to_string(),
+                "c-patch".to_string(),
+            ],
+        };
+        let changelogs = vec![
+            Changelog {
+                id: "c-major".to_string(),
+                summary: "breaking api change".to_string(),
+                releases: vec![Release {
+                    package: "foo".to_string(),
+                    bump: BumpType::Major,
+                }],
+                commit: None,
+            },
+            Changelog {
+                id: "c-minor".to_string(),
+                summary: "new feature".to_string(),
+                releases: vec![Release {
+                    package: "foo".to_string(),
+                    bump: BumpType::Minor,
+                }],
+                commit: None,
+            },
+            Changelog {
+                id: "c-patch".to_string(),
+                summary: "small fix".to_string(),
+                releases: vec![Release {
+                    package: "foo".to_string(),
+                    bump: BumpType::Patch,
+                }],
+                commit: None,
+            },
+        ];
+
+        let output = generate_entry(&release, &changelogs, dir.path());
+
+        assert!(output.contains("### Major Changes"));
+        assert!(output.contains("### Minor Changes"));
+        assert!(output.contains("### Patch Changes"));
+        assert!(output.contains("breaking api change"));
+        assert!(output.contains("new feature"));
+        assert!(output.contains("small fix"));
+
+        let major_pos = output.find("### Major Changes").unwrap();
+        let minor_pos = output.find("### Minor Changes").unwrap();
+        let patch_pos = output.find("### Patch Changes").unwrap();
+        assert!(major_pos < minor_pos);
+        assert!(minor_pos < patch_pos);
+    }
+
+    #[test]
+    fn test_generate_entry_only_major() {
+        let dir = TempDir::new().unwrap();
+        let release = PackageRelease {
+            name: "foo".to_string(),
+            bump: BumpType::Major,
+            old_version: Version::new(1, 0, 0),
+            new_version: Version::new(2, 0, 0),
+            changelog_ids: vec!["c-1".to_string()],
+        };
+        let changelogs = vec![Changelog {
+            id: "c-1".to_string(),
+            summary: "removed old api".to_string(),
+            releases: vec![Release {
+                package: "foo".to_string(),
+                bump: BumpType::Major,
+            }],
+            commit: None,
+        }];
+
+        let output = generate_entry(&release, &changelogs, dir.path());
+
+        assert!(output.contains("### Major Changes"));
+        assert!(!output.contains("### Minor Changes"));
+        assert!(!output.contains("### Patch Changes"));
+    }
+
+    #[test]
+    fn test_generate_entry_multiline_summary() {
+        let dir = TempDir::new().unwrap();
+        let release = PackageRelease {
+            name: "foo".to_string(),
+            bump: BumpType::Minor,
+            old_version: Version::new(1, 0, 0),
+            new_version: Version::new(1, 1, 0),
+            changelog_ids: vec!["c-1".to_string()],
+        };
+        let changelogs = vec![Changelog {
+            id: "c-1".to_string(),
+            summary: "added new feature\nwith detailed explanation\nand examples".to_string(),
+            releases: vec![Release {
+                package: "foo".to_string(),
+                bump: BumpType::Minor,
+            }],
+            commit: None,
+        }];
+
+        let output = generate_entry(&release, &changelogs, dir.path());
+
+        assert!(output.contains("added new feature"));
+        assert!(output.contains("with detailed explanation"));
+        assert!(output.contains("and examples"));
+    }
+
+    #[test]
+    fn test_generate_entry_no_matching_changelogs() {
+        let dir = TempDir::new().unwrap();
+        let release = PackageRelease {
+            name: "foo".to_string(),
+            bump: BumpType::Patch,
+            old_version: Version::new(1, 0, 0),
+            new_version: Version::new(1, 0, 1),
+            changelog_ids: vec!["nonexistent".to_string()],
+        };
+        let changelogs = vec![Changelog {
+            id: "other-change".to_string(),
+            summary: "unrelated change".to_string(),
+            releases: vec![Release {
+                package: "foo".to_string(),
+                bump: BumpType::Patch,
+            }],
+            commit: None,
+        }];
+
+        let output = generate_entry(&release, &changelogs, dir.path());
+
+        assert!(output.contains("## 1.0.1 ("));
+        assert!(!output.contains("### Major Changes"));
+        assert!(!output.contains("### Minor Changes"));
+        assert!(!output.contains("### Patch Changes"));
+    }
+}
+
 pub fn write_changelogs(
     workspace: &Workspace,
     releases: &[PackageRelease],
