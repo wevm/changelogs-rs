@@ -50,12 +50,13 @@ runs:
       run: |
         export PATH="$HOME/.local/bin:$PATH"
         
-        # Run changelogs add with AI, capture the generated file
-        ARGS="--ai \"${{ inputs.ai }}\" --ref origin/${{ inputs.ref }}"
+        # Run changelogs add with AI
+        CMD=(changelogs)
         if [ -n "${{ inputs.ecosystem }}" ]; then
-          ARGS="$ARGS --ecosystem \"${{ inputs.ecosystem }}\""
+          CMD+=(--ecosystem "${{ inputs.ecosystem }}")
         fi
-        eval "changelogs add $ARGS"
+        CMD+=(add --ai "${{ inputs.ai }}" --ref "origin/${{ inputs.ref }}")
+        "${CMD[@]}"
         
         # Find the generated changelog file
         GENERATED_FILE=$(ls -t .changelog/*.md | grep -v README.md | head -n1)
