@@ -235,7 +235,11 @@ fn run_ai_generation(
 
     const MAX_DIFF_BYTES: usize = 32_000;
     let diff_to_use = if diff_to_use.len() > MAX_DIFF_BYTES {
-        let truncated = &diff_to_use[..diff_to_use.floor_char_boundary(MAX_DIFF_BYTES)];
+        let mut end = MAX_DIFF_BYTES;
+        while end > 0 && !diff_to_use.is_char_boundary(end) {
+            end -= 1;
+        }
+        let truncated = &diff_to_use[..end];
         format!(
             "{}\n\n[diff truncated — showing first {}KB of {}KB]",
             truncated,
