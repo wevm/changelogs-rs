@@ -38,6 +38,9 @@ enum Commands {
         base_ref: Option<String>,
     },
 
+    /// Validate workspace configuration
+    Doctor,
+
     /// Initialize changelogs in this workspace
     Init,
 
@@ -80,6 +83,7 @@ fn main() -> Result<()> {
             instructions,
             base_ref,
         } => cli::add::run(empty, ai, instructions, base_ref, cli.ecosystem)?,
+        Commands::Doctor => cli::doctor::run(cli.ecosystem)?,
         Commands::Init => cli::init::run(cli.ecosystem)?,
         Commands::Publish { dry_run, tag } => {
             cli::publish::run_with_ecosystem(dry_run, tag, cli.ecosystem)?
