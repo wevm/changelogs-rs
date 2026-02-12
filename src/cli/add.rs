@@ -171,6 +171,9 @@ Rules:
 - Replace <package-name> with actual package names from the list above
 - Include ALL packages that were modified in the frontmatter
 - Use "patch" for bug fixes, "minor" for features, "major" for breaking changes
+- If no packages were modified (e.g. CI, docs, or config-only changes), use empty frontmatter:
+  ---
+  ---
 - Keep the summary concise (1-3 sentences)
 - Use past tense (e.g. "Added", "Fixed", "Removed")
 
