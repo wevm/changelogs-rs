@@ -401,6 +401,15 @@ Fixed bug Y.
     }
 
     #[test]
+    fn test_parse_empty_frontmatter() {
+        let content = "---\n---\n\nCI-only change, no packages bumped.";
+        let changelog = parse("test-id", content).unwrap();
+        assert!(changelog.releases.is_empty());
+        assert!(changelog.commit.is_none());
+        assert_eq!(changelog.summary, "CI-only change, no packages bumped.");
+    }
+
+    #[test]
     fn test_extract_pr_number_squash_merge() {
         assert_eq!(extract_pr_number("feat: add feature (#42)"), Some(42));
     }
