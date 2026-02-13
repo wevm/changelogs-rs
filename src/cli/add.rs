@@ -260,15 +260,40 @@ fn run_ai_generation(
         .split_first()
         .ok_or_else(|| anyhow::anyhow!("Invalid AI command"))?;
 
-    let mut child = Command::new(cmd)
-        .args(args)
-        .stdin(Stdio::piped())
+    let cmd_name = std::path::Path::new(cmd)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(cmd)
+        .to_ascii_lowercase();
+    let is_openai_chat_completions = cmd_name == "openai"
+        && args
+            .windows(2)
+            .any(|window| window[0] == "api" && window[1] == "chat.completions.create");
+
+    let has_message_arg = args
+        .iter()
+        .any(|arg| *arg == "-g" || *arg == "--message" || arg.starts_with("--message="));
+
+    let mut command = Command::new(cmd);
+    command.args(args);
+    if is_openai_chat_completions && !has_message_arg {
+        command.args(["-g", "user"]).arg(&prompt);
+    }
+
+    let mut child = command
+        .stdin(if is_openai_chat_completions {
+            Stdio::null()
+        } else {
+            Stdio::piped()
+        })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
 
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(prompt.as_bytes())?;
+    if !is_openai_chat_completions {
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin.write_all(prompt.as_bytes())?;
+        }
     }
 
     let output = child.wait_with_output()?;
@@ -307,7 +332,19 @@ fn run_ai_generation(
         ));
     }
 
-    let response = String::from_utf8_lossy(&output.stdout).to_string();
+    let response = if is_openai_chat_completions {
+        serde_json::from_slice::<serde_json::Value>(&output.stdout)
+            .ok()
+            .and_then(|value| {
+                value
+                    .pointer("/choices/0/message/content")
+                    .and_then(|content| content.as_str())
+                    .map(|content| content.to_string())
+            })
+            .unwrap_or_else(|| String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        String::from_utf8_lossy(&output.stdout).to_string()
+    };
 
     let cleaned = response
         .trim()
