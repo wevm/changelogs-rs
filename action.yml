@@ -16,6 +16,10 @@ inputs:
   pypi-token:
     description: 'PyPI API token for publishing (Python)'
     required: false
+  python-version:
+    description: 'Python version for building and publishing (Python ecosystem)'
+    required: false
+    default: '3.11'
   commit:
     description: 'Commit message for version bump (overrides conventional-commit)'
     required: false
@@ -53,7 +57,7 @@ runs:
       if: inputs.ecosystem == 'python' || inputs.pypi-token != ''
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: ${{ inputs.python-version }}
 
     - name: Install Python build tools (for Python ecosystem)
       if: inputs.ecosystem == 'python' || inputs.pypi-token != ''
