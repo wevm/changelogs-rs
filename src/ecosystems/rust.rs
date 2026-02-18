@@ -419,7 +419,9 @@ my-dep = { version = \"1.0.0\" }\n";
         };
 
         // SAFETY: test-only, no concurrent access to this env var
-        unsafe { std::env::remove_var("CARGO_REGISTRY_TOKEN"); }
+        unsafe {
+            std::env::remove_var("CARGO_REGISTRY_TOKEN");
+        }
         let result = RustAdapter::publish(&pkg, false, None).unwrap();
         assert_eq!(result, PublishResult::Skipped);
     }

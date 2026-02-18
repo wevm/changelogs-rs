@@ -194,9 +194,7 @@ impl EcosystemAdapter for PythonAdapter {
             .args(["-m", "build"])
             .current_dir(&pkg_path)
             .output()
-            .map_err(|e| {
-                Error::PublishFailed(format!("failed to run 'python -m build': {}", e))
-            })?;
+            .map_err(|e| Error::PublishFailed(format!("failed to run 'python -m build': {}", e)))?;
 
         if !build_output.status.success() {
             let stdout = String::from_utf8_lossy(&build_output.stdout);
@@ -247,9 +245,9 @@ impl EcosystemAdapter for PythonAdapter {
         }
         cmd.current_dir(&pkg_path);
 
-        let upload_output = cmd.output().map_err(|e| {
-            Error::PublishFailed(format!("failed to run 'twine upload': {}", e))
-        })?;
+        let upload_output = cmd
+            .output()
+            .map_err(|e| Error::PublishFailed(format!("failed to run 'twine upload': {}", e)))?;
 
         if upload_output.status.success() {
             return Ok(PublishResult::Success);
@@ -942,7 +940,10 @@ version = "1.0.0"
 
     #[test]
     fn publish_failed_error_includes_context() {
-        let err = Error::PublishFailed("python -m build failed (exit code 1):\nstdout: \nstderr: No module named build".to_string());
+        let err = Error::PublishFailed(
+            "python -m build failed (exit code 1):\nstdout: \nstderr: No module named build"
+                .to_string(),
+        );
         let msg = err.to_string();
         assert!(msg.contains("publish failed"));
         assert!(msg.contains("exit code 1"));
