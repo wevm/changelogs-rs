@@ -145,20 +145,25 @@ impl EcosystemAdapter for RustAdapter {
             cmd.env("CARGO_REGISTRY_DEFAULT", reg);
         }
 
-        let output = cmd.output()?;
+        let output = cmd.output().map_err(|e| {
+            crate::error::Error::PublishFailed(format!("failed to run 'cargo publish': {}", e))
+        })?;
 
         if output.status.success() {
             return Ok(PublishResult::Success);
         }
 
+        let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         if stderr.contains("already uploaded") || stderr.contains("already exists") {
             return Ok(PublishResult::Success);
         }
 
         Err(crate::error::Error::PublishFailed(format!(
-            "cargo publish failed: {}",
-            stderr
+            "cargo publish failed (exit code {}):\nstdout: {}\nstderr: {}",
+            output.status,
+            stdout.trim(),
+            stderr.trim(),
         )))
     }
 }
@@ -371,5 +376,63 @@ my-dep = { version = \"1.0.0\" }\n";
 
         let updated = std::fs::read_to_string(&manifest).unwrap();
         assert!(updated.contains("version = \"4.0.0\""));
+    }
+
+    #[test]
+    fn publish_dry_run_returns_success() {
+        let dir = TempDir::new().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"test\"\nversion = \"1.0.0\"\n",
+        )
+        .unwrap();
+
+        let pkg = Package {
+            name: "test".to_string(),
+            version: Version::new(1, 0, 0),
+            path: dir.path().to_path_buf(),
+            manifest_path: manifest,
+            dependencies: vec![],
+        };
+
+        let result = RustAdapter::publish(&pkg, true, None).unwrap();
+        assert_eq!(result, PublishResult::Success);
+    }
+
+    #[test]
+    fn publish_skipped_without_token() {
+        let dir = TempDir::new().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"test\"\nversion = \"1.0.0\"\n",
+        )
+        .unwrap();
+
+        let pkg = Package {
+            name: "test".to_string(),
+            version: Version::new(1, 0, 0),
+            path: dir.path().to_path_buf(),
+            manifest_path: manifest,
+            dependencies: vec![],
+        };
+
+        // SAFETY: test-only, no concurrent access to this env var
+        unsafe { std::env::remove_var("CARGO_REGISTRY_TOKEN"); }
+        let result = RustAdapter::publish(&pkg, false, None).unwrap();
+        assert_eq!(result, PublishResult::Skipped);
+    }
+
+    #[test]
+    fn publish_failed_error_includes_context() {
+        let err = crate::error::Error::PublishFailed(
+            "cargo publish failed (exit code 101):\nstdout: \nstderr: error: failed to publish"
+                .to_string(),
+        );
+        let msg = err.to_string();
+        assert!(msg.contains("publish failed"));
+        assert!(msg.contains("exit code 101"));
+        assert!(msg.contains("failed to publish"));
     }
 }

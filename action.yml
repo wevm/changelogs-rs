@@ -106,8 +106,12 @@ runs:
         if [ -n "${{ inputs.ecosystem }}" ]; then
           ECOSYSTEM_FLAG="--ecosystem ${{ inputs.ecosystem }}"
         fi
-        output=$(changelogs $ECOSYSTEM_FLAG version 2>&1)
+        output=$(changelogs $ECOSYSTEM_FLAG version 2>&1) && version_exit=0 || version_exit=$?
         echo "$output"
+        if [ $version_exit -ne 0 ]; then
+          echo "::error::changelogs version failed with exit code $version_exit"
+          exit $version_exit
+        fi
         
         # Extract versions from output (e.g., "changelogs 0.0.1 → 0.1.0" -> "changelogs@0.1.0")
         all_versions=$(echo "$output" | grep -oE '[a-zA-Z0-9_-]+ [0-9]+\.[0-9]+\.[0-9]+ → [0-9]+\.[0-9]+\.[0-9]+' | sed 's/ .* → /@/')
@@ -195,8 +199,7 @@ runs:
         if [ -n "${{ inputs.ecosystem }}" ]; then
           ECOSYSTEM_FLAG="--ecosystem ${{ inputs.ecosystem }}"
         fi
-        output=$(changelogs $ECOSYSTEM_FLAG publish 2>&1)
-        publish_exit=$?
+        output=$(changelogs $ECOSYSTEM_FLAG publish 2>&1) && publish_exit=0 || publish_exit=$?
         echo "$output"
         
         # Parse published packages from output (✓ = published, ⊘ = skipped/tags-only)
@@ -209,9 +212,9 @@ runs:
           echo "published=false" >> $GITHUB_OUTPUT
           echo "publishedPackages=[]" >> $GITHUB_OUTPUT
         fi
-        
+
         if [ $publish_exit -ne 0 ]; then
-          echo "::error::Package publishing failed with exit code $publish_exit"
+          echo "::error::changelogs publish failed with exit code $publish_exit"
           exit $publish_exit
         fi
 
