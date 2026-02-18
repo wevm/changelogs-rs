@@ -85,12 +85,16 @@ fn create_git_tags(workspace: &Workspace, packages: &[&Package]) -> Result<()> {
     for pkg in packages {
         let tag = workspace.tag_name(pkg);
 
-        let status = Command::new("git")
+        let output = Command::new("git")
             .args(["tag", "-a", &tag, "-m", &format!("Release {}", tag)])
-            .status()?;
+            .output()
+            .map_err(|e| anyhow::anyhow!("failed to run 'git tag': {}", e))?;
 
-        if status.success() {
+        if output.status.success() {
             println!("Created git tag: {}", tag);
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            eprintln!("Failed to create git tag {}: {}", tag, stderr.trim());
         }
     }
 

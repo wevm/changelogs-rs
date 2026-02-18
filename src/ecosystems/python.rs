@@ -193,13 +193,17 @@ impl EcosystemAdapter for PythonAdapter {
         let build_output = Command::new("python")
             .args(["-m", "build"])
             .current_dir(&pkg_path)
-            .output()?;
+            .output()
+            .map_err(|e| Error::PublishFailed(format!("failed to run 'python -m build': {}", e)))?;
 
         if !build_output.status.success() {
+            let stdout = String::from_utf8_lossy(&build_output.stdout);
             let stderr = String::from_utf8_lossy(&build_output.stderr);
             return Err(Error::PublishFailed(format!(
-                "python -m build failed: {}",
-                stderr
+                "python -m build failed (exit code {}):\nstdout: {}\nstderr: {}",
+                build_output.status,
+                stdout.trim(),
+                stderr.trim(),
             )));
         }
 
@@ -241,20 +245,25 @@ impl EcosystemAdapter for PythonAdapter {
         }
         cmd.current_dir(&pkg_path);
 
-        let upload_output = cmd.output()?;
+        let upload_output = cmd
+            .output()
+            .map_err(|e| Error::PublishFailed(format!("failed to run 'twine upload': {}", e)))?;
 
         if upload_output.status.success() {
             return Ok(PublishResult::Success);
         }
 
+        let stdout = String::from_utf8_lossy(&upload_output.stdout);
         let stderr = String::from_utf8_lossy(&upload_output.stderr);
         if stderr.contains("already exists") || stderr.contains("File already exists") {
             return Ok(PublishResult::Success);
         }
 
         Err(Error::PublishFailed(format!(
-            "twine upload failed: {}",
-            stderr
+            "twine upload failed (exit code {}):\nstdout: {}\nstderr: {}",
+            upload_output.status,
+            stdout.trim(),
+            stderr.trim(),
         )))
     }
 }
@@ -889,5 +898,66 @@ version = "2.0.0"
         assert_eq!(packages.len(), 1);
         assert_eq!(packages[0].name, "pep621-pkg");
         assert_eq!(packages[0].version.to_string(), "1.0.0");
+    }
+
+    #[test]
+    fn publish_dry_run_returns_success() {
+        let tmp = TempDir::new().unwrap();
+        create_pyproject(
+            tmp.path(),
+            r#"
+[project]
+name = "test-pkg"
+version = "1.0.0"
+"#,
+        );
+        let pkg = &PythonAdapter::discover(tmp.path()).unwrap()[0];
+        let result = PythonAdapter::publish(pkg, true, None).unwrap();
+        assert_eq!(result, PublishResult::Success);
+    }
+
+    #[test]
+    fn publish_skipped_without_tokens() {
+        let tmp = TempDir::new().unwrap();
+        create_pyproject(
+            tmp.path(),
+            r#"
+[project]
+name = "test-pkg"
+version = "1.0.0"
+"#,
+        );
+        let pkg = &PythonAdapter::discover(tmp.path()).unwrap()[0];
+        // Ensure tokens are not set
+        // SAFETY: test-only, no concurrent access to these env vars
+        unsafe {
+            std::env::remove_var("TWINE_PASSWORD");
+            std::env::remove_var("TWINE_USERNAME");
+        }
+        let result = PythonAdapter::publish(pkg, false, None).unwrap();
+        assert_eq!(result, PublishResult::Skipped);
+    }
+
+    #[test]
+    fn publish_failed_error_includes_context() {
+        let err = Error::PublishFailed(
+            "python -m build failed (exit code 1):\nstdout: \nstderr: No module named build"
+                .to_string(),
+        );
+        let msg = err.to_string();
+        assert!(msg.contains("publish failed"));
+        assert!(msg.contains("exit code 1"));
+        assert!(msg.contains("No module named build"));
+    }
+
+    #[test]
+    fn publish_failed_command_not_found_error() {
+        let err = Error::PublishFailed(
+            "failed to run 'python -m build': No such file or directory (os error 2)".to_string(),
+        );
+        let msg = err.to_string();
+        assert!(msg.contains("publish failed"));
+        assert!(msg.contains("failed to run"));
+        assert!(msg.contains("No such file or directory"));
     }
 }
