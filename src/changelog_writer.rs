@@ -285,9 +285,9 @@ mod tests {
             commit: None,
         }];
 
-        let output = generate_entry(&release, &changelogs, dir.path());
+        let output = generate_entry_with_date(&release, &changelogs, dir.path(), "2025-01-15");
 
-        assert!(output.contains("## 1.0.1 ("));
+        assert!(output.contains("## 1.0.1 (2025-01-15)"));
         assert!(output.contains("### Patch Changes"));
         assert!(output.contains("fix a bug"));
     }
@@ -336,7 +336,7 @@ mod tests {
             },
         ];
 
-        let output = generate_entry(&release, &changelogs, dir.path());
+        let output = generate_entry_with_date(&release, &changelogs, dir.path(), "2025-01-15");
 
         assert!(output.contains("### Major Changes"));
         assert!(output.contains("### Minor Changes"));
@@ -372,7 +372,7 @@ mod tests {
             commit: None,
         }];
 
-        let output = generate_entry(&release, &changelogs, dir.path());
+        let output = generate_entry_with_date(&release, &changelogs, dir.path(), "2025-01-15");
 
         assert!(output.contains("### Major Changes"));
         assert!(!output.contains("### Minor Changes"));
@@ -399,7 +399,7 @@ mod tests {
             commit: None,
         }];
 
-        let output = generate_entry(&release, &changelogs, dir.path());
+        let output = generate_entry_with_date(&release, &changelogs, dir.path(), "2025-01-15");
 
         assert!(output.contains("added new feature"));
         assert!(output.contains("with detailed explanation"));
@@ -426,9 +426,9 @@ mod tests {
             commit: None,
         }];
 
-        let output = generate_entry(&release, &changelogs, dir.path());
+        let output = generate_entry_with_date(&release, &changelogs, dir.path(), "2025-01-15");
 
-        assert!(output.contains("## 1.0.1 ("));
+        assert!(output.contains("## 1.0.1 (2025-01-15)"));
         assert!(!output.contains("### Major Changes"));
         assert!(!output.contains("### Minor Changes"));
         assert!(!output.contains("### Patch Changes"));
