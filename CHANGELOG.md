@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.3 (2026-03-18)
+
+### Patch Changes
+
+- Added support for unified versioning in root changelog format by implicitly treating all workspace packages as a fixed group, merging duplicate version headings and deduplicating changelog entries. Added Rust workspace version inheritance support for reading and writing versions via `version.workspace = true`. (by @Kartik, [#79](https://github.com/tempoxyz/changelogs/pull/79))
+
 ## 0.6.2 (2026-03-17)
 
 ### Patch Changes
