@@ -301,6 +301,16 @@ runs:
             -f tag_name="$tag" \
             --jq '.body' 2>/dev/null || echo "")
           
+          # Extract "What's Changed" body so we can re-include it for contributor attribution.
+          # GitHub generates release page avatars from "by @username in #NNN" entries,
+          # which only appear in the "What's Changed" section.
+          whats_changed=$(echo "$github_notes" | awk '
+            /^## What'\''s Changed/ { in_section=1; next }
+            /^## New Contributors/ { in_section=0 }
+            /^\*\*Full Changelog\*\*/ { in_section=0 }
+            in_section { print }
+          ')
+
           # Remove "What's Changed" section, keep "New Contributors" and "Full Changelog"
           github_extras=$(echo "$github_notes" | awk '
             BEGIN { skip=0 }
@@ -309,7 +319,14 @@ runs:
             /^\*\*Full Changelog\*\*/ { skip=0 }
             !skip { print }
           ')
-          
+
+          # Re-include "What's Changed" as a collapsed section so GitHub can attribute
+          # all PR authors as release contributors, not just first-time contributors.
+          if [ -n "$whats_changed" ]; then
+            collapsed="<details><summary>What's Changed</summary>"$'\n\n'"$whats_changed"$'\n'"</details>"
+            github_extras="$collapsed"$'\n\n'"$github_extras"
+          fi
+
           # Combine: changelog content + GitHub extras (New Contributors, Full Changelog)
           if [ -n "$changelog_notes" ]; then
             notes="$changelog_notes"
