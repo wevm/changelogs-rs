@@ -302,10 +302,19 @@ runs:
           previous_tag=""
           if [[ "$tag" == *"@"* ]]; then
             prefix="${tag%@*}@"
-            # Pick the next-lower version after current tag (not just highest non-current)
+            # Pick the next-lower version after current tag (not just highest non-current).
+            # awk finds the current tag in the desc-sorted list and prints the one after it.
+            # Falls back to grep if the current tag isn't in the list yet (shouldn't happen
+            # since "Push git tags" runs before this step, but just in case).
             previous_tag=$(git tag --list "${prefix}*" --sort=-version:refname | awk -v cur="$tag" '$0==cur{found=1;next} found{print;exit}')
+            if [ -z "$previous_tag" ]; then
+              previous_tag=$(git tag --list "${prefix}*" --sort=-version:refname | grep -Fxv -- "$tag" | head -1)
+            fi
           else
             previous_tag=$(git tag --list "v*" --sort=-version:refname | awk -v cur="$tag" '$0==cur{found=1;next} found{print;exit}')
+            if [ -z "$previous_tag" ]; then
+              previous_tag=$(git tag --list "v*" --sort=-version:refname | grep -Fxv -- "$tag" | head -1)
+            fi
           fi
           
           # Generate GitHub's notes to get "New Contributors" and "Full Changelog"
