@@ -1,0 +1,10 @@
+# Allow only this repository's Release workflow on master to push release
+# branches/tags and create or update pull requests and GitHub releases.
+subject: repo:tempoxyz@211589300/changelogs@1141722002:ref:refs/heads/master
+claim_pattern:
+  # This job is defined directly, so match workflow_ref rather than the
+  # job_workflow_ref claim used for reusable workflows.
+  workflow_ref: tempoxyz/changelogs/\.github/workflows/release\.yml@refs/heads/master
+permissions:
+  contents: write
+  pull_requests: write
