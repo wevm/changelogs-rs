@@ -284,6 +284,7 @@ runs:
       id: body
       shell: bash
       run: |
+        body_file="$(mktemp "$RUNNER_TEMP/changelog-pr-body.XXXXXX")"
         {
           echo "This PR was opened by the Changelogs release workflow."
           echo ""
@@ -296,22 +297,39 @@ runs:
           if [ -f "CHANGELOG.md" ]; then
             git diff -- CHANGELOG.md | grep '^+' | grep -v '^+++' | sed 's/^+//' | head -100 || true
           fi
-        } > /tmp/pr-body.md
-        
-        echo "body-file=/tmp/pr-body.md" >> $GITHUB_OUTPUT
+        } > "$body_file"
+
+        delimiter="$(openssl rand -hex 16)"
+        {
+          echo "body<<$delimiter"
+          cat "$body_file"
+          echo "$delimiter"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Check version changes
+      if: steps.check.outputs.hasChangelogs == 'true' || steps.check.outputs.hasPrereleases == 'true'
+      id: version-changes
+      shell: bash
+      run: |
+        git add -A
+        if git diff --cached --quiet; then
+          echo "has-changes=false" >> "$GITHUB_OUTPUT"
+          echo "No version changes to commit; skipping release PR."
+        else
+          echo "has-changes=true" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Create or update PR
-      if: steps.check.outputs.hasChangelogs == 'true' || steps.check.outputs.hasPrereleases == 'true'
+      if: steps.version-changes.outputs.has-changes == 'true'
       id: pr
-      uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+      uses: tempoxyz/gh-actions/actions/create-pull-request@3a37d720685503bb084ba723ee981a6c1b120360
       with:
         token: ${{ inputs.github-token }}
         branch: ${{ steps.resolve-branch.outputs.release_branch }}
         title: ${{ steps.version.outputs.title }}
-        body-path: ${{ steps.body.outputs.body-file }}
+        body: ${{ steps.body.outputs.body }}
         base: ${{ github.ref_name }}
         commit-message: ${{ inputs.commit || steps.version.outputs.commit-msg }}
-        delete-branch: true
 
     # Publish mode: Publish when no changelogs or stable-promotion PR are needed.
     # Will publish to registry if tokens provided, otherwise just creates git tags
