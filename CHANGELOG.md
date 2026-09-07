@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1 (2026-09-07)
+
+### Patch Changes
+
+- Support Python packages using Core Metadata 2.5 by upgrading the pinned Twine publisher. (by @ParvAhuja, [#148](https://github.com/tempoxyz/changelogs/pull/148))
+- Use Tempo's vendored Peter Evans pull request action so release workflows comply with the organization action policy while preserving upstream behavior. (by @DerekCofausper, [#159](https://github.com/tempoxyz/changelogs/pull/159))
+
 ## 0.9.0 (2026-07-27)
 
 ### Minor Changes
